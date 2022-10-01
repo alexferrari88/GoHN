@@ -2,10 +2,7 @@
 package gohn
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 )
 
 const (
@@ -20,26 +17,7 @@ const (
 
 // GetItem returns an Item given an ID.
 func GetItem(id int) (Item, error) {
-	var item Item
-
-	url := fmt.Sprintf(ITEM_URL, id)
-	resp, err := http.Get(url)
-	if err != nil {
-		return item, err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return item, err
-	}
-
-	err = json.Unmarshal(body, &item)
-	if err != nil {
-		return item, err
-	}
-
-	return item, nil
+	return retrieveFromURL[Item](fmt.Sprintf(ITEM_URL, id))
 }
 
 // GetTopStories returns up to the top 500 stories on Hacker News.

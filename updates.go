@@ -13,5 +13,5 @@ const (
 
 // GetUpdates returns a slice of IDs for the given URL.
 func GetUpdates() (Update, error) {
-	return RetrieveFromURL[Update](UPDATES_URL)
+	return retrieveFromURL[Update](UPDATES_URL)
 }
