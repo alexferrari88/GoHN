@@ -25,6 +25,11 @@ type Item struct {
 	Descendants int    `json:"descendants"`
 }
 
+type ItemWithComments struct {
+	Item
+	Comments []ItemWithComments `json:"comments"`
+}
+
 // RetrieveIDs returns a slice of IDs for the given URL.
 func RetrieveIDs(url string) ([]int, error) {
 	var ids []int
@@ -46,4 +51,17 @@ func RetrieveIDs(url string) ([]int, error) {
 	}
 
 	return ids, nil
+}
+
+func GetItemWithComments(id int) (ItemWithComments, error) {
+	var item ItemWithComments
+
+	item.Item, _ = GetItem(id)
+
+	for _, commentID := range item.Kids {
+		comment, _ := GetItemWithComments(commentID)
+		item.Comments = append(item.Comments, comment)
+	}
+
+	return item, nil
 }
