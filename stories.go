@@ -16,8 +16,15 @@ const (
 )
 
 // GetItem returns an Item given an ID.
-func GetItem(id int) (Item, error) {
-	return retrieveFromURL[Item](fmt.Sprintf(item_url, id))
+func GetItem(id int, fn ItemProcessor) (Item, error) {
+	item, err := retrieveFromURL[Item](fmt.Sprintf(item_url, id))
+	if err != nil {
+		return item, err
+	}
+	if fn != nil {
+		fn(&item)
+	}
+	return item, nil
 }
 
 // GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.

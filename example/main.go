@@ -2,15 +2,16 @@
 
 import (
 	"fmt"
-	"html"
 
 	"github.com/alexferrari88/gohn"
+	itemprocessors "github.com/alexferrari88/gohn/item-processors"
 )
 
 func main() {
 	topStoriesIds, _ := gohn.GetTopStoriesIDs()
-	story, _ := gohn.GetItem(topStoriesIds[0])
-	commentsMap := story.RetrieveKidsItems()
+	story, _ := gohn.GetItem(topStoriesIds[0], nil)
+	// UnescapeHTML is applied to each retrieved item to unescape HTML characters
+	commentsMap := story.RetrieveKidsItems(itemprocessors.UnescapeHTML())
 	fmt.Printf("Comments found: %d\n", len(commentsMap))
 	fmt.Println()
 	// preorder traversal of the n-ary tree story.Kids
@@ -18,7 +19,7 @@ func main() {
 	var preorder func(int)
 	preorder = func(id int) {
 		comment := commentsMap[id]
-		fmt.Println(html.UnescapeString(comment.Text))
+		fmt.Println(comment.Text)
 		for _, kid := range comment.Kids {
 			fmt.Print("\t")
 			preorder(kid)

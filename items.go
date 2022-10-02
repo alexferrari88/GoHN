@@ -31,13 +31,18 @@ type Item struct {
 	Descendants int    `json:"descendants"`
 }
 
+// ItemProcessor is used by GetItem and Item.RetrieveKidsItems to process items after they are retrieved.
+// the package itemprocessor provides some common implementations.
+type ItemProcessor func(*Item) error
+
 // RetrieveIDs returns a slice of IDs for the given URL.
 func RetrieveIDs(url string) ([]int, error) {
 	return retrieveFromURL[[]int](url)
 }
 
 // RetrieveKidsItems returns all the comments for a given item.
-func (i *Item) RetrieveKidsItems() map[int]Item {
+// If the ItemProcessor returns an error, the item will not be added to the map.
+func (i *Item) RetrieveKidsItems(fn ItemProcessor) map[int]Item {
 	mapCommentById := make(map[int]Item)
 	commentsChan := make(chan Item)
 	// buffered so that initializing the queue doesn't block
@@ -53,9 +58,19 @@ L:
 		case currentId := <-kidsQueue:
 			if commentsNumToFetch > 0 {
 				go func() {
-					it, err := GetItem(currentId)
+					it, err := GetItem(currentId, nil)
 					if err != nil {
-						commentsChan <- Item{}
+						// TODO: add better error handling
+						commentsNumToFetch--
+						return
+					}
+					if fn != nil {
+						err = fn(&it)
+						if err != nil {
+							// TODO: add better error handling
+							commentsNumToFetch--
+							return
+						}
 					}
 					commentsChan <- it
 				}()

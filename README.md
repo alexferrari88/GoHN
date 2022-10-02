@@ -11,6 +11,17 @@ gohn is a tiny wrapper for the [Hacker News API](https://github.com/HackerNews/A
 
 It facilitates the use of the API by providing a simple interface to the API endpoints.
 
+## Features 🚀
+
+- Get the top stories
+- Get the new stories
+- Get the best stories
+- Get the ask stories
+- Get the show stories
+- Get the job stories
+- Retrieve all comments for a story using goroutines to speed up the process
+- Apply filters to retrieved items (stories, comments)
+
 ## Usage 💻
 
 Refer to the [GoDoc](https://pkg.go.dev/github.com/alexferrari88/gohn) for the full API reference.
