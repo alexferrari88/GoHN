@@ -7,7 +7,7 @@
 <img src="img/logo_1.svg" width="300" style="margin: 0 auto;" />
 </div>
 
-gohn is a tiny wrapper for the [Hacker News API](https://github.com/HackerNews/API).
+gohn is a tiny wrapper for the [Hacker News API](https://github.com/HackerNews/API) for Go.
 
 It facilitates the use of the API by providing a simple interface to the API endpoints.
 
