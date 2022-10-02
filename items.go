@@ -6,9 +6,9 @@ import (
 	"net/http"
 )
 
-// MAX_ITEM_ID_URL is the URL that retrieves the current largest item id.
+// max_item_id_url is the URL that retrieves the current largest item id.
 const (
-	MAX_ITEM_ID_URL = "https://hacker-news.firebaseio.com/v0/maxitem.json"
+	max_item_id_url = "https://hacker-news.firebaseio.com/v0/maxitem.json"
 )
 
 // Item represents a single item from the Hacker News API.
@@ -30,34 +30,60 @@ type Item struct {
 	Descendants int    `json:"descendants"`
 }
 
-// ItemWithComments represents an item with all its comments.
-type ItemWithComments struct {
-	Item
-	Comments []ItemWithComments `json:"comments"`
-}
-
 // RetrieveIDs returns a slice of IDs for the given URL.
 func RetrieveIDs(url string) ([]int, error) {
 	return retrieveFromURL[[]int](url)
 }
 
-// GetItemWithComments returns an item with all its comments.
-func GetItemWithComments(id int) (ItemWithComments, error) {
-	var item ItemWithComments
-
-	item.Item, _ = GetItem(id)
-
-	for _, commentID := range item.Kids {
-		comment, _ := GetItemWithComments(commentID)
-		item.Comments = append(item.Comments, comment)
+// RetrieveKidsItems returns all the comments for a given item.
+func (i *Item) RetrieveKidsItems() map[int]Item {
+	mapCommentById := make(map[int]Item)
+	commentsChan := make(chan Item)
+	// buffered so that initializing the queue doesn't block
+	kidsQueue := make(chan int, len(i.Kids))
+	commentsNumToFetch := len(i.Kids)
+	// initialize kidsQueue so that the fetching in the for loop can start
+	for _, kid := range i.Kids {
+		kidsQueue <- kid
 	}
-
-	return item, nil
+L:
+	for {
+		select {
+		case currentId := <-kidsQueue:
+			if commentsNumToFetch > 0 {
+				go func() {
+					it, err := GetItem(currentId)
+					if err != nil {
+						commentsChan <- Item{}
+					}
+					commentsChan <- it
+				}()
+			} else {
+				break L
+			}
+		case comment := <-commentsChan:
+			commentsNumToFetch--
+			if comment.ID != 0 {
+				mapCommentById[comment.ID] = comment
+				commentsNumToFetch += len(comment.Kids)
+				go func() {
+					for _, kid := range comment.Kids {
+						kidsQueue <- kid
+					}
+				}()
+			}
+		default:
+			if commentsNumToFetch == 0 {
+				break L
+			}
+		}
+	}
+	return mapCommentById
 }
 
 // GetMaxItemID returns the ID of the most recent item.
 func GetMaxItemID() (int, error) {
-	return retrieveFromURL[int](MAX_ITEM_ID_URL)
+	return retrieveFromURL[int](max_item_id_url)
 }
 
 // retrieveFromURL sends a GET request to the given URL and returns unmarsheled values and an error.
