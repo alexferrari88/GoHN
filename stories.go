@@ -20,32 +20,32 @@ func GetItem(id int) (Item, error) {
 	return retrieveFromURL[Item](fmt.Sprintf(item_url, id))
 }
 
-// GetTopStories returns up to the top 500 stories on Hacker News.
+// GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.
 func GetTopStoriesIDs() ([]int, error) {
 	return RetrieveIDs(top_stories_url)
 }
 
-// GetBestStories returns up to the best 500 stories on Hacker News.
+// GetBestStories returns the IDs of up to 500 of the best stories on Hacker News.
 func GetBestStoriesIDs() ([]int, error) {
 	return RetrieveIDs(best_stories_url)
 }
 
-// GetNewStories returns up to the newest 500 stories on Hacker News.
+// GetNewStories returns the IDs of up to 500 of the newest stories on Hacker News.
 func GetNewStoriesIDs() ([]int, error) {
 	return RetrieveIDs(new_stories_url)
 }
 
-// GetAskStories returns up to 200 of the latest Ask stories on Hacker News.
+// GetAskStories returns the IDs of up to 200 of the latest Ask stories on Hacker News.
 func GetAskStoriesIDs() ([]int, error) {
 	return RetrieveIDs(ask_stories_url)
 }
 
-// GetShowStories returns up to 200 of the latest Show stories on Hacker News.
+// GetShowStories returns the IDs of up to 200 of the latest Show stories on Hacker News.
 func GetShowStoriesIDs() ([]int, error) {
 	return RetrieveIDs(show_stories_url)
 }
 
-// GetJobStories returns up to 200 of the latest Job stories on Hacker News.
+// GetJobStories returns the IDs of up to 200 of the latest Job stories on Hacker News.
 func GetJobStoriesIDs() ([]int, error) {
 	return RetrieveIDs(job_stories_url)
 }
