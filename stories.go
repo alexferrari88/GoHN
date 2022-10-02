@@ -6,46 +6,46 @@ import (
 )
 
 const (
-	TOP_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/topstories.json"
-	BEST_STORIES_URL = "https://hacker-news.firebaseio.com/v0/beststories.json"
-	NEW_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/newstories.json"
-	ASK_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/askstories.json"
-	SHOW_STORIES_URL = "https://hacker-news.firebaseio.com/v0/showstories.json"
-	JOB_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/jobstories.json"
-	ITEM_URL         = "https://hacker-news.firebaseio.com/v0/item/%d.json"
+	top_stories_url  = "https://hacker-news.firebaseio.com/v0/topstories.json"
+	best_stories_url = "https://hacker-news.firebaseio.com/v0/beststories.json"
+	new_stories_url  = "https://hacker-news.firebaseio.com/v0/newstories.json"
+	ask_stories_url  = "https://hacker-news.firebaseio.com/v0/askstories.json"
+	show_stories_url = "https://hacker-news.firebaseio.com/v0/showstories.json"
+	job_stories_url  = "https://hacker-news.firebaseio.com/v0/jobstories.json"
+	item_url         = "https://hacker-news.firebaseio.com/v0/item/%d.json"
 )
 
 // GetItem returns an Item given an ID.
 func GetItem(id int) (Item, error) {
-	return retrieveFromURL[Item](fmt.Sprintf(ITEM_URL, id))
+	return retrieveFromURL[Item](fmt.Sprintf(item_url, id))
 }
 
 // GetTopStories returns up to the top 500 stories on Hacker News.
 func GetTopStoriesIDs() ([]int, error) {
-	return RetrieveIDs(TOP_STORIES_URL)
+	return RetrieveIDs(top_stories_url)
 }
 
 // GetBestStories returns up to the best 500 stories on Hacker News.
 func GetBestStoriesIDs() ([]int, error) {
-	return RetrieveIDs(BEST_STORIES_URL)
+	return RetrieveIDs(best_stories_url)
 }
 
 // GetNewStories returns up to the newest 500 stories on Hacker News.
 func GetNewStoriesIDs() ([]int, error) {
-	return RetrieveIDs(NEW_STORIES_URL)
+	return RetrieveIDs(new_stories_url)
 }
 
 // GetAskStories returns up to 200 of the latest Ask stories on Hacker News.
 func GetAskStoriesIDs() ([]int, error) {
-	return RetrieveIDs(ASK_STORIES_URL)
+	return RetrieveIDs(ask_stories_url)
 }
 
 // GetShowStories returns up to 200 of the latest Show stories on Hacker News.
 func GetShowStoriesIDs() ([]int, error) {
-	return RetrieveIDs(SHOW_STORIES_URL)
+	return RetrieveIDs(show_stories_url)
 }
 
 // GetJobStories returns up to 200 of the latest Job stories on Hacker News.
 func GetJobStoriesIDs() ([]int, error) {
-	return RetrieveIDs(JOB_STORIES_URL)
+	return RetrieveIDs(job_stories_url)
 }

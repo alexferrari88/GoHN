@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	USER_URL = "https://hacker-news.firebaseio.com/v0/user/%s.json"
+	user_url = "https://hacker-news.firebaseio.com/v0/user/%s.json"
 )
 
 // User represents a single user from the Hacker News API.
@@ -24,7 +24,7 @@ type User struct {
 func GetUser(username string) (User, error) {
 	var user User
 
-	url := fmt.Sprintf(USER_URL, username)
+	url := fmt.Sprintf(user_url, username)
 	resp, err := http.Get(url)
 	if err != nil {
 		return user, err
