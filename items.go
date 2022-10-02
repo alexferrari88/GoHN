@@ -12,6 +12,7 @@ const (
 )
 
 // Item represents a single item from the Hacker News API.
+// https://github.com/HackerNews/API#items
 type Item struct {
 	ID          int    `json:"id"`
 	Deleted     bool   `json:"deleted"`

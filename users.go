@@ -12,6 +12,7 @@ const (
 )
 
 // User represents a single user from the Hacker News API.
+// https://github.com/HackerNews/API#users
 type User struct {
 	ID        string `json:"id"`
 	Created   int    `json:"created"`

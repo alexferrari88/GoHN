@@ -1,6 +1,7 @@
 ﻿package gohn
 
 // Update represents a items and profiles changes from the Hacker News API.
+// https://github.com/HackerNews/API#changed-items-and-profiles
 type Update struct {
 	Items    []int    `json:"items"`
 	Profiles []string `json:"profiles"`
