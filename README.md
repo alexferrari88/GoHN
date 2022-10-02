@@ -2,7 +2,9 @@
 
 <div align="center">
 <a href="https://pkg.go.dev/github.com/alexferrari88/gohn"><img src="https://pkg.go.dev/badge/github.com/alexferrari88/gohn.svg" alt="Go Reference"></a>
-<img src="img/logo_1.svg" width="300" style="margin: 0 auto; display: block;" />
+</div>
+<div align="center">
+<img src="img/logo_1.svg" width="300" style="margin: 0 auto;" />
 </div>
 
 gohn is a tiny wrapper for the [Hacker News API](https://github.com/HackerNews/API).
