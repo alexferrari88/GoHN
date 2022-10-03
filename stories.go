@@ -1,10 +1,6 @@
 // Package gohn is a wrapper for the Hacker News API which uses goroutines.
 package gohn
 
-import (
-	"fmt"
-)
-
 const (
 	top_stories_url  = "https://hacker-news.firebaseio.com/v0/topstories.json"
 	best_stories_url = "https://hacker-news.firebaseio.com/v0/beststories.json"
@@ -14,18 +10,6 @@ const (
 	job_stories_url  = "https://hacker-news.firebaseio.com/v0/jobstories.json"
 	item_url         = "https://hacker-news.firebaseio.com/v0/item/%d.json"
 )
-
-// GetItem returns an Item given an ID.
-func GetItem(id int, fn ItemProcessor) (Item, error) {
-	item, err := retrieveFromURL[Item](fmt.Sprintf(item_url, id))
-	if err != nil {
-		return item, err
-	}
-	if fn != nil {
-		fn(&item)
-	}
-	return item, nil
-}
 
 // GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.
 func GetTopStoriesIDs() ([]int, error) {

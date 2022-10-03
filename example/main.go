@@ -9,7 +9,7 @@ import (
 
 func main() {
 	topStoriesIds, _ := gohn.GetTopStoriesIDs()
-	story, _ := gohn.GetItem(topStoriesIds[0], nil)
+	story, _ := gohn.GetItem(topStoriesIds[0])
 	// UnescapeHTML is applied to each retrieved item to unescape HTML characters
 	commentsMap := story.RetrieveKidsItems(itemprocessors.UnescapeHTML())
 	fmt.Printf("Comments found: %d\n", len(commentsMap))

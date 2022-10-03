@@ -2,6 +2,7 @@
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -35,6 +36,15 @@ type Item struct {
 // the package itemprocessor provides some common implementations.
 type ItemProcessor func(*Item) error
 
+// GetItem returns an Item given an ID.
+func GetItem(id int) (Item, error) {
+	item, err := retrieveFromURL[Item](fmt.Sprintf(item_url, id))
+	if err != nil {
+		return item, err
+	}
+	return item, nil
+}
+
 // RetrieveIDs returns a slice of IDs for the given URL.
 func RetrieveIDs(url string) ([]int, error) {
 	return retrieveFromURL[[]int](url)
@@ -58,7 +68,7 @@ L:
 		case currentId := <-kidsQueue:
 			if commentsNumToFetch > 0 {
 				go func() {
-					it, err := GetItem(currentId, nil)
+					it, err := GetItem(currentId)
 					if err != nil {
 						// TODO: add better error handling
 						commentsNumToFetch--
