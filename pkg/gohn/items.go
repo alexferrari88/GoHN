@@ -5,9 +5,9 @@ import (
 	"fmt"
 )
 
-// max_item_id_url is the URL that retrieves the current largest item id.
+// MAX_ITEM_ID_URL is the URL that retrieves the current largest item id.
 const (
-	max_item_id_url = "https://hacker-news.firebaseio.com/v0/maxitem.json"
+	MAX_ITEM_ID_URL = "https://hacker-news.firebaseio.com/v0/maxitem.json"
 )
 
 // Item represents a single item from the Hacker News API.
@@ -37,7 +37,7 @@ type ItemProcessor func(*Item) error
 // GetItem returns an Item given an ID.
 func (c client) GetItem(id int) (Item, error) {
 	var item Item
-	resp, err := c.retrieveFromURL(fmt.Sprintf(item_url, id))
+	resp, err := c.retrieveFromURL(fmt.Sprintf(ITEM_URL, id))
 	if err != nil {
 		return item, err
 	}
@@ -122,7 +122,7 @@ L:
 // GetMaxItemID returns the ID of the most recent item.
 func (c client) GetMaxItemID() (int, error) {
 	var id int
-	resp, err := c.retrieveFromURL(max_item_id_url)
+	resp, err := c.retrieveFromURL(MAX_ITEM_ID_URL)
 	if err != nil {
 		return id, err
 	}

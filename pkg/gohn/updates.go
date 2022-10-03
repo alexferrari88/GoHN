@@ -9,16 +9,16 @@ type Update struct {
 	Profiles []string `json:"profiles"`
 }
 
-// updates_url is the URL for the updates endpoint.
+// UPDATES_URL is the URL for the updates endpoint.
 const (
-	updates_url = "https://hacker-news.firebaseio.com/v0/updates.json"
+	UPDATES_URL = "https://hacker-news.firebaseio.com/v0/updates.json"
 )
 
 // GetUpdates returns a slice of IDs for the given URL.
 func (c client) GetUpdates() (Update, error) {
 	var updates Update
 
-	resp, err := c.retrieveFromURL(updates_url)
+	resp, err := c.retrieveFromURL(UPDATES_URL)
 	if err != nil {
 		return updates, err
 	}

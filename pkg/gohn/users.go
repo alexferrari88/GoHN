@@ -5,8 +5,9 @@ import (
 	"fmt"
 )
 
+// USER_URL is the URL for the user endpoint.
 const (
-	user_url = "https://hacker-news.firebaseio.com/v0/user/%s.json"
+	USER_URL = "https://hacker-news.firebaseio.com/v0/user/%s.json"
 )
 
 // User represents a single user from the Hacker News API.
@@ -23,7 +24,7 @@ type User struct {
 func (c client) GetUser(username string) (User, error) {
 	var user User
 
-	url := fmt.Sprintf(user_url, username)
+	url := fmt.Sprintf(USER_URL, username)
 	resp, err := c.retrieveFromURL(url)
 	if err != nil {
 		return user, err
