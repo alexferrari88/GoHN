@@ -3,6 +3,7 @@
 import (
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 )
 
 // MAX_ITEM_ID_URL is the URL that retrieves the current largest item id.
@@ -71,7 +72,7 @@ func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) map[int]Item {
 	commentsChan := make(chan Item)
 	// buffered so that initializing the queue doesn't block
 	kidsQueue := make(chan int, len(item.Kids))
-	commentsNumToFetch := len(item.Kids)
+	commentsNumToFetch := int32(len(item.Kids))
 	// initialize kidsQueue so that the fetching in the for loop can start
 	for _, kid := range item.Kids {
 		kidsQueue <- kid
@@ -85,14 +86,14 @@ L:
 					it, err := c.GetItem(currentId)
 					if err != nil {
 						// TODO: add better error handling
-						commentsNumToFetch--
+						atomic.AddInt32(&commentsNumToFetch, -1)
 						return
 					}
 					if fn != nil {
 						err = fn(&it)
 						if err != nil {
 							// TODO: add better error handling
-							commentsNumToFetch--
+							atomic.AddInt32(&commentsNumToFetch, -1)
 							return
 						}
 					}
@@ -102,10 +103,10 @@ L:
 				break L
 			}
 		case comment := <-commentsChan:
-			commentsNumToFetch--
+			atomic.AddInt32(&commentsNumToFetch, -1)
 			if comment.ID != 0 {
 				mapCommentById[comment.ID] = comment
-				commentsNumToFetch += len(comment.Kids)
+				atomic.AddInt32(&commentsNumToFetch, int32(len(comment.Kids)))
 				go func() {
 					for _, kid := range comment.Kids {
 						kidsQueue <- kid
