@@ -54,7 +54,7 @@ func setupItems(extraKids []gohn.Item) (gohn.Item, []gohn.Item) {
 
 	if len(extraKids) > 0 {
 		for _, kid := range extraKids {
-			mockKid1.Kids = append(mockKid1.Kids, kid.ID)
+			mockItem.Kids = append(mockItem.Kids, kid.ID)
 			kids = append(kids, kid)
 		}
 	}
