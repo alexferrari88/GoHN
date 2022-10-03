@@ -1,9 +1,9 @@
-﻿package itemprocessors
+﻿package processors
 
 import (
 	"html"
 
-	"github.com/alexferrari88/gohn"
+	"github.com/alexferrari88/gohn/pkg/gohn"
 )
 
 // UnescapeHTML unescapes HTML entities in the text of the item

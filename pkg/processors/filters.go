@@ -1,9 +1,9 @@
-﻿package itemprocessors
+﻿package processors
 
 import (
 	"fmt"
 
-	"github.com/alexferrari88/gohn"
+	"github.com/alexferrari88/gohn/pkg/gohn"
 )
 
 // FilterOutWords filters items that contain the given words in the title or text.
