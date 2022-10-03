@@ -64,14 +64,22 @@ func (c client) RetrieveIDs(url string) ([]int, error) {
 	return ids, nil
 }
 
-// RetrieveKidsItems returns all the comments for a given item.
-// If the ItemProcessor returns an error,
-// the item will not be added to the map.
+// RetrieveKidsItems returns a map of all the comments for a given Item.
+// The map key is the ID of the item. The map value is the item itself.
+// The map can be used to retrieve the comments for a given item by
+// traversing the Kids slice of the item recursively (N-ary tree preorder traversal).
+// See an implementation in the example directory.
+// If the ItemProcessor returns an error, the item will not be added to the map.
 func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) map[int]Item {
+	// the map of items to return
 	mapCommentById := make(map[int]Item)
+	// the channel of items to be added to the map
 	commentsChan := make(chan Item)
+	// the channel of IDs to be retrieved
+	// kids found in the commentsChan will be added to this channel
 	// buffered so that initializing the queue doesn't block
 	kidsQueue := make(chan int, len(item.Kids))
+	// Use an atomic counter to keep track of the number of items
 	commentsNumToFetch := int32(len(item.Kids))
 	// initialize kidsQueue so that the fetching in the for loop can start
 	for _, kid := range item.Kids {
