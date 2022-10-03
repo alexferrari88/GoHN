@@ -1,4 +1,4 @@
-﻿package test
+﻿package gohntest
 
 import (
 	"context"
@@ -6,15 +6,16 @@ import (
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
+	"github.com/alexferrari88/gohn/test/mocks"
 )
 
 func TestGetTopStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.TOP_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.TOP_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetTopStoriesIDs()
@@ -35,11 +36,11 @@ func TestGetTopStoriesIDs(t *testing.T) {
 
 func TestGetBestStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.BEST_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.BEST_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetBestStoriesIDs()
@@ -60,11 +61,11 @@ func TestGetBestStoriesIDs(t *testing.T) {
 
 func TestGetNewStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.NEW_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.NEW_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetNewStoriesIDs()
@@ -85,11 +86,11 @@ func TestGetNewStoriesIDs(t *testing.T) {
 
 func TestGetAskStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.ASK_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.ASK_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetAskStoriesIDs()
@@ -110,11 +111,11 @@ func TestGetAskStoriesIDs(t *testing.T) {
 
 func TestGetShowStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.SHOW_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.SHOW_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetShowStoriesIDs()
@@ -135,11 +136,11 @@ func TestGetShowStoriesIDs(t *testing.T) {
 
 func TestGetJobStoriesIDs(t *testing.T) {
 	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockStories)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.JOB_STORIES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.JOB_STORIES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	stories, err := client.GetJobStoriesIDs()

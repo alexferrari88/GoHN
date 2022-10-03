@@ -1,4 +1,4 @@
-package test
+package gohntest
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
+	"github.com/alexferrari88/gohn/test/mocks"
 )
 
 func TestGetUpdates(t *testing.T) {
@@ -13,11 +14,11 @@ func TestGetUpdates(t *testing.T) {
 		Items:    []int{1, 2, 3},
 		Profiles: []string{"user1", "user2"},
 	}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockUpdates)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockUpdates)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.UPDATES_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.UPDATES_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	updates, err := client.GetUpdates()

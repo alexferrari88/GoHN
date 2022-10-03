@@ -1,4 +1,4 @@
-package test
+package gohntest
 
 import (
 	"context"
@@ -7,15 +7,16 @@ import (
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
+	"github.com/alexferrari88/gohn/test/mocks"
 )
 
 func TestGetMaxItemID(t *testing.T) {
 	mockID := 123
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockID)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockID)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{gohn.MAX_ITEM_ID_URL}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{gohn.MAX_ITEM_ID_URL}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	id, err := client.GetMaxItemID()
@@ -32,11 +33,11 @@ func TestGetItem(t *testing.T) {
 	mockItem := gohn.Item{
 		ID: 1,
 	}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockItem)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockItem)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{fmt.Sprintf(gohn.ITEM_URL, 1)}, []*http.Response{mockResponseJSON})
+	mockClient := mocks.NewMockClient([]string{fmt.Sprintf(gohn.ITEM_URL, 1)}, []*http.Response{mockResponseJSON})
 
 	client := gohn.NewClient(context.Background(), mockClient)
 	item, err := client.GetItem(1)
@@ -80,35 +81,35 @@ func TestRetrieveKidsItems(t *testing.T) {
 	mockKid6 := gohn.Item{
 		ID: 7,
 	}
-	mockResponseJSON, err := NewMockResponse(http.StatusOK, mockItem)
+	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockItem)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON2, err := NewMockResponse(http.StatusOK, mockKid1)
+	mockResponseJSON2, err := mocks.NewMockResponse(http.StatusOK, mockKid1)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON3, err := NewMockResponse(http.StatusOK, mockKid2)
+	mockResponseJSON3, err := mocks.NewMockResponse(http.StatusOK, mockKid2)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON4, err := NewMockResponse(http.StatusOK, mockKid3)
+	mockResponseJSON4, err := mocks.NewMockResponse(http.StatusOK, mockKid3)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON5, err := NewMockResponse(http.StatusOK, mockKid4)
+	mockResponseJSON5, err := mocks.NewMockResponse(http.StatusOK, mockKid4)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON6, err := NewMockResponse(http.StatusOK, mockKid5)
+	mockResponseJSON6, err := mocks.NewMockResponse(http.StatusOK, mockKid5)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockResponseJSON7, err := NewMockResponse(http.StatusOK, mockKid6)
+	mockResponseJSON7, err := mocks.NewMockResponse(http.StatusOK, mockKid6)
 	if err != nil {
 		t.Errorf("error creating mock response: %v", err)
 	}
-	mockClient := NewMockClient([]string{
+	mockClient := mocks.NewMockClient([]string{
 		fmt.Sprintf(gohn.ITEM_URL, 1),
 		fmt.Sprintf(gohn.ITEM_URL, 2),
 		fmt.Sprintf(gohn.ITEM_URL, 3),
