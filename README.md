@@ -33,7 +33,6 @@ Refer to [example/main.go](example/main.go) for a full example on how to retriev
 ## Contributing 🤝🏼
 
 Feel free to fork this repo and create a PR. I will review them and merge if ok.
-The above todos can be a very good place to start.
 
 ## License 📝
 
