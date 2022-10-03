@@ -8,12 +8,22 @@ import (
 )
 
 func main() {
-	topStoriesIds, _ := gohn.GetTopStoriesIDs()
-	story, _ := gohn.GetItem(topStoriesIds[0])
+	// Instantiate a new client
+	client := gohn.NewDefaultClient()
+
+	// Get the top 500 stories' IDs
+	topStoriesIds, _ := client.GetTopStoriesIDs()
+
+	// Retrieve the first one
+	story, _ := client.GetItem(topStoriesIds[0])
+
+	// Retrieve all the comments for that story
 	// UnescapeHTML is applied to each retrieved item to unescape HTML characters
-	commentsMap := story.RetrieveKidsItems(processors.UnescapeHTML())
+	commentsMap := client.RetrieveKidsItems(story, processors.UnescapeHTML())
+
 	fmt.Printf("Comments found: %d\n", len(commentsMap))
 	fmt.Println()
+
 	// preorder traversal of the n-ary tree story.Kids
 	// to print the comments
 	var preorder func(int)

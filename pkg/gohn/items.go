@@ -3,8 +3,6 @@
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 )
 
 // max_item_id_url is the URL that retrieves the current largest item id.
@@ -37,8 +35,13 @@ type Item struct {
 type ItemProcessor func(*Item) error
 
 // GetItem returns an Item given an ID.
-func GetItem(id int) (Item, error) {
-	item, err := retrieveFromURL[Item](fmt.Sprintf(item_url, id))
+func (c client) GetItem(id int) (Item, error) {
+	var item Item
+	resp, err := c.retrieveFromURL(fmt.Sprintf(item_url, id))
+	if err != nil {
+		return item, err
+	}
+	err = json.Unmarshal(resp, &item)
 	if err != nil {
 		return item, err
 	}
@@ -46,20 +49,29 @@ func GetItem(id int) (Item, error) {
 }
 
 // RetrieveIDs returns a slice of IDs for the given URL.
-func RetrieveIDs(url string) ([]int, error) {
-	return retrieveFromURL[[]int](url)
+func (c client) RetrieveIDs(url string) ([]int, error) {
+	var ids []int
+	resp, err := c.retrieveFromURL(url)
+	if err != nil {
+		return ids, err
+	}
+	err = json.Unmarshal(resp, &ids)
+	if err != nil {
+		return ids, err
+	}
+	return ids, nil
 }
 
 // RetrieveKidsItems returns all the comments for a given item.
 // If the ItemProcessor returns an error, the item will not be added to the map.
-func (i *Item) RetrieveKidsItems(fn ItemProcessor) map[int]Item {
+func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) map[int]Item {
 	mapCommentById := make(map[int]Item)
 	commentsChan := make(chan Item)
 	// buffered so that initializing the queue doesn't block
-	kidsQueue := make(chan int, len(i.Kids))
-	commentsNumToFetch := len(i.Kids)
+	kidsQueue := make(chan int, len(item.Kids))
+	commentsNumToFetch := len(item.Kids)
 	// initialize kidsQueue so that the fetching in the for loop can start
-	for _, kid := range i.Kids {
+	for _, kid := range item.Kids {
 		kidsQueue <- kid
 	}
 L:
@@ -68,7 +80,7 @@ L:
 		case currentId := <-kidsQueue:
 			if commentsNumToFetch > 0 {
 				go func() {
-					it, err := GetItem(currentId)
+					it, err := c.GetItem(currentId)
 					if err != nil {
 						// TODO: add better error handling
 						commentsNumToFetch--
@@ -108,29 +120,15 @@ L:
 }
 
 // GetMaxItemID returns the ID of the most recent item.
-func GetMaxItemID() (int, error) {
-	return retrieveFromURL[int](max_item_id_url)
-}
-
-// retrieveFromURL sends a GET request to the given URL and returns unmarsheled values and an error.
-func retrieveFromURL[T any](url string) (T, error) {
-	var result T
-
-	resp, err := http.Get(url)
+func (c client) GetMaxItemID() (int, error) {
+	var id int
+	resp, err := c.retrieveFromURL(max_item_id_url)
 	if err != nil {
-		return result, err
+		return id, err
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(resp, &id)
 	if err != nil {
-		return result, err
+		return id, err
 	}
-
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+	return id, nil
 }

@@ -3,8 +3,6 @@
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 )
 
 const (
@@ -22,22 +20,15 @@ type User struct {
 }
 
 // GetUser returns a User given a username.
-func GetUser(username string) (User, error) {
+func (c client) GetUser(username string) (User, error) {
 	var user User
 
 	url := fmt.Sprintf(user_url, username)
-	resp, err := http.Get(url)
+	resp, err := c.retrieveFromURL(url)
 	if err != nil {
 		return user, err
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return user, err
-	}
-
-	err = json.Unmarshal(body, &user)
+	err = json.Unmarshal(resp, &user)
 	if err != nil {
 		return user, err
 	}
