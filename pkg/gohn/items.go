@@ -8,6 +8,7 @@ import (
 
 // MAX_ITEM_ID_URL is the URL that retrieves the current largest item id.
 const (
+	ITEM_URL        = "https://hacker-news.firebaseio.com/v0/item/%d.json"
 	MAX_ITEM_ID_URL = "https://hacker-news.firebaseio.com/v0/maxitem.json"
 )
 

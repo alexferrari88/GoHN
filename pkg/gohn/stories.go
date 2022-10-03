@@ -8,7 +8,6 @@ const (
 	ASK_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/askstories.json"
 	SHOW_STORIES_URL = "https://hacker-news.firebaseio.com/v0/showstories.json"
 	JOB_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/jobstories.json"
-	ITEM_URL         = "https://hacker-news.firebaseio.com/v0/item/%d.json"
 )
 
 // GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.
