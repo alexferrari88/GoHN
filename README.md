@@ -13,14 +13,10 @@ It facilitates the use of the API by providing a simple interface to the API end
 
 ## Features 🚀
 
-- Get the top stories
-- Get the new stories
-- Get the best stories
-- Get the ask stories
-- Get the show stories
-- Get the job stories
+- Get the top/new/best/ask/show/job stories
 - Retrieve all comments for a story using goroutines to speed up the process
 - Apply filters to retrieved items (stories, comments)
+- Can be used with a custom http client (for instance, to use a proxy)
 
 ## Usage 💻
 
@@ -32,7 +28,7 @@ Refer to [example/main.go](example/main.go) for a full example on how to retriev
 
 ## Contributing 🤝🏼
 
-Feel free to fork this repo and create a PR. I will review them and merge if ok.
+Feel free to fork this repo and create a PR. I will review them and merge, if ok.
 
 ## License 📝
 
