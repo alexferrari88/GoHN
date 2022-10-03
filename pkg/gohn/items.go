@@ -30,8 +30,9 @@ type Item struct {
 	Descendants int    `json:"descendants"`
 }
 
-// ItemProcessor is used by GetItem and Item.RetrieveKidsItems to process items after they are retrieved.
-// the package itemprocessor provides some common implementations.
+// ItemProcessor is used by GetItem and Item.RetrieveKidsItems
+// to process items after they are retrieved.
+// The package itemprocessor provides some common implementations.
 type ItemProcessor func(*Item) error
 
 // GetItem returns an Item given an ID.
@@ -63,7 +64,8 @@ func (c client) RetrieveIDs(url string) ([]int, error) {
 }
 
 // RetrieveKidsItems returns all the comments for a given item.
-// If the ItemProcessor returns an error, the item will not be added to the map.
+// If the ItemProcessor returns an error,
+// the item will not be added to the map.
 func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) map[int]Item {
 	mapCommentById := make(map[int]Item)
 	commentsChan := make(chan Item)

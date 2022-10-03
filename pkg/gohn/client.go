@@ -44,7 +44,8 @@ func (c *client) SetContext(ctx context.Context) {
 	c.ctx = ctx
 }
 
-// retrieveFromURL sends a GET request to the given URL and returns the raw response body values and an error.
+// retrieveFromURL sends a GET request to the given URL
+// and returns the raw response body values and an error.
 func (c client) retrieveFromURL(url string) ([]byte, error) {
 	var body []byte
 
