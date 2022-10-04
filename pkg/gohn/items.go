@@ -25,12 +25,16 @@ type Item struct {
 	Parent      int    `json:"parent"`
 	Poll        int    `json:"poll"`
 	Kids        []int  `json:"kids"`
+	Order       int
 	URL         string `json:"url"`
 	Score       int    `json:"score"`
 	Title       string `json:"title"`
 	Parts       []int  `json:"parts"`
 	Descendants int    `json:"descendants"`
 }
+
+// ItemsIndex is a map of items indexed by their ID.
+type ItemsIndex map[int]Item
 
 // ItemProcessor is used by GetItem and Item.RetrieveKidsItems
 // to process items after they are retrieved.
@@ -71,9 +75,9 @@ func (c client) RetrieveIDs(url string) ([]int, error) {
 // traversing the Kids slice of the item recursively (N-ary tree preorder traversal).
 // See an implementation in the example directory.
 // If the ItemProcessor returns an error, the item will not be added to the map.
-func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) map[int]Item {
+func (c client) RetrieveKidsItems(item Item, fn ItemProcessor) ItemsIndex {
 	// the map of items to return
-	mapCommentById := make(map[int]Item)
+	mapCommentById := make(ItemsIndex)
 	// the channel of items to be added to the map
 	commentsChan := make(chan Item)
 	// the channel of IDs to be retrieved
@@ -143,4 +147,14 @@ func (c client) GetMaxItemID() (int, error) {
 		return id, err
 	}
 	return id, nil
+}
+
+// IsTopLevelComment checks if an Item is a top level comment in a story.
+func (s Story) IsTopLevelComment(item Item) bool {
+	for _, kid := range s.StoryItem.Kids {
+		if kid == item.ID {
+			return true
+		}
+	}
+	return false
 }

@@ -10,6 +10,36 @@ const (
 	JOB_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/jobstories.json"
 )
 
+// Story represents a story on Hacker News.
+// It contains the story item as StoryItem and a map
+// of comments by ID as CommentsByIdMap.
+type Story struct {
+	StoryItem       Item
+	CommentsByIdMap ItemsIndex
+}
+
+// CalculateCommentsOrder calculates the order of the comments in a story.
+// The order is calculated by traversing the Kids slice of the Story item
+// recursively (N-ary tree preorder traversal).
+// The order is stored in the Order field of the Item struct.
+func (s *Story) CalculateCommentsOrder() {
+	var n int
+	var preorder func(int, int)
+	preorder = func(id int, order int) {
+		comment := s.CommentsByIdMap[id]
+		comment.Order = order
+		s.CommentsByIdMap[id] = comment
+		for _, kid := range comment.Kids {
+			preorder(kid, n+1)
+			n++
+		}
+	}
+	for _, kid := range s.StoryItem.Kids {
+		preorder(kid, n)
+		n++
+	}
+}
+
 // GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.
 func (c client) GetTopStoriesIDs() ([]int, error) {
 	return c.RetrieveIDs(TOP_STORIES_URL)
