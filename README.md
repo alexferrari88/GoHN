@@ -1,4 +1,4 @@
-﻿# gohn — Hacker News API Wrapper for Go
+﻿# GoHN — Hacker News API Wrapper for Go
 
 <div align="center">
 <a href="https://pkg.go.dev/github.com/alexferrari88/gohn/pkg/gohn"><img src="https://pkg.go.dev/badge/github.com/alexferrari88/gohn.svg" alt="Go Reference"></a>
