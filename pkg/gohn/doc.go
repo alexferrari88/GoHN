@@ -1,5 +1,5 @@
 /*
-Package gohn is a tiny wrapper for the Hacker News API: https://github.com/HackerNews/API
+Package GoHN is a wrapper for the Hacker News API: https://github.com/HackerNews/API
 
 	  Example usage:
 	  	package main

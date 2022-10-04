@@ -1,13 +1,13 @@
 ﻿# gohn — Hacker News API Wrapper for Go
 
 <div align="center">
-<a href="https://pkg.go.dev/github.com/alexferrari88/gohn"><img src="https://pkg.go.dev/badge/github.com/alexferrari88/gohn.svg" alt="Go Reference"></a>
+<a href="https://pkg.go.dev/github.com/alexferrari88/gohn/pkg/gohn"><img src="https://pkg.go.dev/badge/github.com/alexferrari88/gohn.svg" alt="Go Reference"></a>
 </div>
 <div align="center">
 <img src="img/logo_1.svg" width="300" style="margin: 0 auto;" />
 </div>
 
-gohn is a tiny wrapper for the [Hacker News API](https://github.com/HackerNews/API) for Go.
+GoHN is a wrapper for the [Hacker News API](https://github.com/HackerNews/API) for Go.
 
 It facilitates the use of the API by providing a simple interface to the API endpoints.
 
@@ -20,7 +20,7 @@ It facilitates the use of the API by providing a simple interface to the API end
 
 ## Usage 💻
 
-Refer to the [GoDoc](https://pkg.go.dev/github.com/alexferrari88/gohn) for the full API reference.
+Refer to the [GoDoc](https://pkg.go.dev/github.com/alexferrari88/gohn/pkg/gohn) for the full API reference.
 
 ### Example
 
