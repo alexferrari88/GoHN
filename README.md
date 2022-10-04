@@ -14,7 +14,8 @@ It facilitates the use of the API by providing a simple interface to the API end
 ## Features 🚀
 
 - Get the top/new/best/ask/show/job stories
-- Retrieve all comments for a story using goroutines to speed up the process
+- Retrieve all comments (with metadata) for a story using goroutines to speed up the process
+- Retrieve the comments ordered as they appear in the story on the website
 - Apply filters to retrieved items (stories, comments)
 - Can be used with a custom http client (for instance, to use a proxy)
 
