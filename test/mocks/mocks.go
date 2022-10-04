@@ -51,6 +51,7 @@ func NewMockItems(num int) []gohn.Item {
 		items[i] = gohn.Item{
 			ID:   i + 1,
 			Text: "test",
+			Type: "comment",
 		}
 	}
 	return items
@@ -61,10 +62,9 @@ func AddParentToMockItem(item *gohn.Item, parent *gohn.Item) {
 }
 
 func AddKidsToMockItem(item *gohn.Item, kids []gohn.Item) {
-	for _, kid := range kids {
-		kid := kid
-		AddParentToMockItem(&kid, item)
-		item.Kids = append(item.Kids, kid.ID)
+	for i := range kids {
+		AddParentToMockItem(&kids[i], item)
+		item.Kids = append(item.Kids, kids[i].ID)
 	}
 }
 

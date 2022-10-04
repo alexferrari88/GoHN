@@ -2,6 +2,7 @@
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync/atomic"
 )
@@ -158,4 +159,23 @@ func (s Story) IsTopLevelComment(item Item) bool {
 		}
 	}
 	return false
+}
+
+// GetStoryIdFromComment returns the ID of the story for a given comment.
+func (c client) GetStoryIdFromComment(item Item) (int, error) {
+	if item.Type != "comment" {
+		return 0, errors.New("item is not a comment")
+	}
+	var storyId int
+	for {
+		if item.Type == "story" {
+			storyId = item.ID
+			break
+		}
+		if item.Parent == 0 {
+			break
+		}
+		item, _ = c.GetItem(item.Parent)
+	}
+	return storyId, nil
 }

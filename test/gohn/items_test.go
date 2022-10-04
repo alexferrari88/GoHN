@@ -13,12 +13,13 @@ import (
 )
 
 func setupMocks() (parent gohn.Item, kids []gohn.Item, mockClient *mocks.MockHTTPClient, err error) {
-	// parent is the main item with ID = 1. It has 3 kids
+	// parent is the main item with ID = 1. It has 3 kids (IDs = 2, 3, 4)
 	// kid[0] (ID = 2) has 2 kids (kid[3] (ID = 5) and kid[4] (ID = 6))
 	// kid[1] (ID = 3) has 1 kid (kid[5] (ID = 7))
 	// kid[2] (ID = 4) has 0 kids
 	mockItems := mocks.NewMockItems(7)
 	parent = mockItems[0]
+	parent.Type = "story"
 	kids = mockItems[1:]
 	mocks.AddKidsToMockItem(&parent, kids[0:3])
 	mocks.AddKidsToMockItem(&kids[0], kids[3:5])
@@ -193,5 +194,42 @@ func TestGetOrderedCommentsIDs(t *testing.T) {
 
 	if !reflect.DeepEqual(expectedIDs, orderedIDs) {
 		t.Errorf("expected order %v, got %v", expectedIDs, orderedIDs)
+	}
+}
+
+func TestGetStoryIdFromComment(t *testing.T) {
+	parent, kids, mockClient, err := setupMocks()
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	client := gohn.NewClient(context.Background(), mockClient)
+	items := client.RetrieveKidsItems(parent, nil)
+
+	if len(items) != 6 {
+		t.Fatalf("expected 6 items, got %v", len(items))
+	}
+
+	mockRespKid0JSON, _ := mocks.NewMockResponse(http.StatusOK, kids[0])
+	mockRespParentJSON, _ := mocks.NewMockResponse(http.StatusOK, parent)
+	mockClient = mocks.NewMockClient([]string{
+		fmt.Sprintf(gohn.ITEM_URL, 2),
+		fmt.Sprintf(gohn.ITEM_URL, 1),
+	}, []*http.Response{
+		mockRespKid0JSON,
+		mockRespParentJSON,
+	})
+
+	client = gohn.NewClient(context.Background(), mockClient)
+
+	expectedStoryID := 1
+	storyID, err := client.GetStoryIdFromComment(items[5])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if expectedStoryID != storyID {
+		t.Errorf("expected story ID %v, got %v", expectedStoryID, storyID)
 	}
 }
