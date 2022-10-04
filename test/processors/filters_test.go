@@ -3,7 +3,6 @@
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
@@ -63,35 +62,9 @@ func setupItems(extraKids []gohn.Item) (gohn.Item, []gohn.Item) {
 
 }
 
-func setupClient(mockItem gohn.Item, mockKids []gohn.Item) (*mocks.MockHTTPClient, error) {
-
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockItem)
-	if err != nil {
-		return nil, fmt.Errorf("error creating mock response: %v", err)
-	}
-
-	mockKidResponses := make([]*http.Response, len(mockKids))
-	for i, kid := range mockKids {
-		mockKidResponses[i], err = mocks.NewMockResponse(http.StatusOK, kid)
-		if err != nil {
-			return nil, fmt.Errorf("error creating mock response: %v", err)
-		}
-	}
-
-	urls := make([]string, len(mockKids)+1)
-	urls[0] = fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%v.json", mockItem.ID)
-	for i, kid := range mockKids {
-		urls[i+1] = fmt.Sprintf("https://hacker-news.firebaseio.com/v0/item/%v.json", kid.ID)
-	}
-
-	mockClient := mocks.NewMockClient(urls, append([]*http.Response{mockResponseJSON}, mockKidResponses...))
-
-	return mockClient, nil
-}
-
 func setup(extraKids []gohn.Item) (gohn.Item, []gohn.Item, *mocks.MockHTTPClient, error) {
 	mockItem, kids := setupItems(extraKids)
-	mockClient, err := setupClient(mockItem, kids)
+	mockClient, err := mocks.SetupMockClient(mockItem, kids)
 	if err != nil {
 		return gohn.Item{}, nil, nil, fmt.Errorf("error setting up test: %v", err)
 	}

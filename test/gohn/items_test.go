@@ -4,11 +4,32 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
 	"github.com/alexferrari88/gohn/test/mocks"
 )
+
+func setupMocks() (parent gohn.Item, kids []gohn.Item, mockClient *mocks.MockHTTPClient, err error) {
+	// parent is the main item with ID = 1. It has 3 kids
+	// kid[0] (ID = 2) has 2 kids (kid[3] (ID = 5) and kid[4] (ID = 6))
+	// kid[1] (ID = 3) has 1 kid (kid[5] (ID = 7))
+	// kid[2] (ID = 4) has 0 kids
+	mockItems := mocks.NewMockItems(7)
+	parent = mockItems[0]
+	kids = mockItems[1:]
+	mocks.AddKidsToMockItem(&parent, kids[0:3])
+	mocks.AddKidsToMockItem(&kids[0], kids[3:5])
+	mocks.AddKidsToMockItem(&kids[1], kids[5:6])
+
+	mockClient, err = mocks.SetupMockClient(parent, kids)
+
+	if err != nil {
+		return parent, kids, mockClient, fmt.Errorf("error setting up mock client: %v", err)
+	}
+	return
+}
 
 func TestGetMaxItemID(t *testing.T) {
 	mockID := 123
@@ -50,111 +71,98 @@ func TestGetItem(t *testing.T) {
 	}
 }
 
-// test the RetrieveKidsItems function
-// item has 3 kids
-// kid 1 has 2 kids
-// kid 2 has 1 kid
-// kid 3 has 0 kids
-// total number of items should be 6
 func TestRetrieveKidsItems(t *testing.T) {
-	mockItem := gohn.Item{
-		ID:   1,
-		Kids: []int{2, 3, 4},
-	}
-	mockKid1 := gohn.Item{
-		ID:   2,
-		Kids: []int{5, 6},
-	}
-	mockKid2 := gohn.Item{
-		ID:   3,
-		Kids: []int{7},
-	}
-	mockKid3 := gohn.Item{
-		ID: 4,
-	}
-	mockKid4 := gohn.Item{
-		ID: 5,
-	}
-	mockKid5 := gohn.Item{
-		ID: 6,
-	}
-	mockKid6 := gohn.Item{
-		ID: 7,
-	}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockItem)
+	parent, kids, mockClient, err := setupMocks()
+
 	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
+		t.Error(err)
 	}
-	mockResponseJSON2, err := mocks.NewMockResponse(http.StatusOK, mockKid1)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockResponseJSON3, err := mocks.NewMockResponse(http.StatusOK, mockKid2)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockResponseJSON4, err := mocks.NewMockResponse(http.StatusOK, mockKid3)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockResponseJSON5, err := mocks.NewMockResponse(http.StatusOK, mockKid4)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockResponseJSON6, err := mocks.NewMockResponse(http.StatusOK, mockKid5)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockResponseJSON7, err := mocks.NewMockResponse(http.StatusOK, mockKid6)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{
-		fmt.Sprintf(gohn.ITEM_URL, 1),
-		fmt.Sprintf(gohn.ITEM_URL, 2),
-		fmt.Sprintf(gohn.ITEM_URL, 3),
-		fmt.Sprintf(gohn.ITEM_URL, 4),
-		fmt.Sprintf(gohn.ITEM_URL, 5),
-		fmt.Sprintf(gohn.ITEM_URL, 6),
-		fmt.Sprintf(gohn.ITEM_URL, 7),
-	}, []*http.Response{
-		mockResponseJSON,
-		mockResponseJSON2,
-		mockResponseJSON3,
-		mockResponseJSON4,
-		mockResponseJSON5,
-		mockResponseJSON6,
-		mockResponseJSON7,
-	})
 
 	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(mockItem, nil)
+	items := client.RetrieveKidsItems(parent, nil)
 
 	if len(items) != 6 {
 		t.Errorf("expected 6 items, got %v", len(items))
 	}
 
-	if items[mockKid1.ID].ID != mockKid1.ID {
-		t.Errorf("expected item %v, got %v", mockKid1, items[mockKid1.ID])
+	for _, kid := range kids {
+		if _, ok := items[kid.ID]; !ok {
+			t.Errorf("expected item %v, got %v", kid, items)
+		}
+	}
+}
+
+func TestCalculateCommentsOrder(t *testing.T) {
+	parent, _, mockClient, err := setupMocks()
+
+	if err != nil {
+		t.Error(err)
 	}
 
-	if items[mockKid2.ID].ID != mockKid2.ID {
-		t.Errorf("expected item %v, got %v", mockKid2, items[mockKid2.ID])
+	client := gohn.NewClient(context.Background(), mockClient)
+	items := client.RetrieveKidsItems(parent, nil)
+
+	if len(items) != 6 {
+		t.Fatalf("expected 6 items, got %v", len(items))
 	}
 
-	if items[mockKid3.ID].ID != mockKid3.ID {
-		t.Errorf("expected item %v, got %v", mockKid3, items[mockKid3.ID])
+	story := gohn.Story{
+		StoryItem:       parent,
+		CommentsByIdMap: items,
 	}
 
-	if items[mockKid4.ID].ID != mockKid4.ID {
-		t.Errorf("expected item %v, got %v", mockKid4, items[mockKid4.ID])
+	story.CalculateCommentsOrder()
+
+	// sort story.CommentsIndex by the Order field
+	var keys []int
+	for k := range story.CommentsByIdMap {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return story.CommentsByIdMap[keys[i]].Order < story.CommentsByIdMap[keys[j]].Order
+	})
+
+	// expected order
+	expectedOrderIDs := []int{2, 5, 6, 3, 7, 4}
+	for i, id := range expectedOrderIDs {
+		if id != keys[i] && story.CommentsByIdMap[id].Order != i {
+			t.Errorf("expected order %v, got %v", expectedOrderIDs, keys)
+		}
+	}
+}
+
+func TestIsTopLevelComment(t *testing.T) {
+	parent, _, mockClient, err := setupMocks()
+
+	if err != nil {
+		t.Error(err)
 	}
 
-	if items[mockKid5.ID].ID != mockKid5.ID {
-		t.Errorf("expected item %v, got %v", mockKid5, items[mockKid5.ID])
+	client := gohn.NewClient(context.Background(), mockClient)
+	items := client.RetrieveKidsItems(parent, nil)
+
+	if len(items) != 6 {
+		t.Fatalf("expected 6 items, got %v", len(items))
 	}
 
-	if items[mockKid6.ID].ID != mockKid6.ID {
-		t.Errorf("expected item %v, got %v", mockKid6, items[mockKid6.ID])
+	story := gohn.Story{
+		StoryItem:       parent,
+		CommentsByIdMap: items,
 	}
+
+	expectedByID := map[int]bool{
+		2: true,
+		3: true,
+		4: true,
+		5: false,
+		6: false,
+		7: false,
+	}
+
+	for _, comment := range story.CommentsByIdMap {
+		if story.IsTopLevelComment(comment) != expectedByID[comment.ID] {
+			t.Errorf("expected ID %d to be %v, got %v", comment.ID, expectedByID[comment.ID], story.IsTopLevelComment(comment))
+		}
+	}
+
 }
