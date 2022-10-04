@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -92,7 +93,7 @@ func TestRetrieveKidsItems(t *testing.T) {
 	}
 }
 
-func TestCalculateCommentsOrder(t *testing.T) {
+func TestCalculateCommentsPosition(t *testing.T) {
 	parent, _, mockClient, err := setupMocks()
 
 	if err != nil {
@@ -111,22 +112,22 @@ func TestCalculateCommentsOrder(t *testing.T) {
 		CommentsByIdMap: items,
 	}
 
-	story.CalculateCommentsOrder()
+	story.SetCommentsPosition()
 
-	// sort story.CommentsIndex by the Order field
+	// sort story.CommentsIndex by the Position field
 	var keys []int
 	for k := range story.CommentsByIdMap {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return story.CommentsByIdMap[keys[i]].Order < story.CommentsByIdMap[keys[j]].Order
+		return story.CommentsByIdMap[keys[i]].Position < story.CommentsByIdMap[keys[j]].Position
 	})
 
 	// expected order
-	expectedOrderIDs := []int{2, 5, 6, 3, 7, 4}
-	for i, id := range expectedOrderIDs {
-		if id != keys[i] && story.CommentsByIdMap[id].Order != i {
-			t.Errorf("expected order %v, got %v", expectedOrderIDs, keys)
+	expectedPositionIDs := []int{2, 5, 6, 3, 7, 4}
+	for i, id := range expectedPositionIDs {
+		if id != keys[i] && story.CommentsByIdMap[id].Position != i {
+			t.Errorf("expected order %v, got %v", expectedPositionIDs, keys)
 		}
 	}
 }
@@ -164,5 +165,33 @@ func TestIsTopLevelComment(t *testing.T) {
 			t.Errorf("expected ID %d to be %v, got %v", comment.ID, expectedByID[comment.ID], story.IsTopLevelComment(comment))
 		}
 	}
+}
 
+func TestGetOrderedCommentsIDs(t *testing.T) {
+	parent, _, mockClient, err := setupMocks()
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	client := gohn.NewClient(context.Background(), mockClient)
+	items := client.RetrieveKidsItems(parent, nil)
+
+	if len(items) != 6 {
+		t.Fatalf("expected 6 items, got %v", len(items))
+	}
+
+	story := gohn.Story{
+		StoryItem:       parent,
+		CommentsByIdMap: items,
+	}
+
+	story.SetCommentsPosition()
+
+	expectedIDs := []int{2, 5, 6, 3, 7, 4}
+	orderedIDs := story.GetOrderedCommentsIDs()
+
+	if !reflect.DeepEqual(expectedIDs, orderedIDs) {
+		t.Errorf("expected order %v, got %v", expectedIDs, orderedIDs)
+	}
 }

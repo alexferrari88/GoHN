@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 )
 
+// ITEM_URL is the URL to retrieve an item given an ID.
 // MAX_ITEM_ID_URL is the URL that retrieves the current largest item id.
 const (
 	ITEM_URL        = "https://hacker-news.firebaseio.com/v0/item/%d.json"
@@ -25,7 +26,7 @@ type Item struct {
 	Parent      int    `json:"parent"`
 	Poll        int    `json:"poll"`
 	Kids        []int  `json:"kids"`
-	Order       int
+	Position    int
 	URL         string `json:"url"`
 	Score       int    `json:"score"`
 	Title       string `json:"title"`

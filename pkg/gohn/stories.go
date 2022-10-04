@@ -1,6 +1,8 @@
-// Package gohn is a wrapper for the Hacker News API which uses goroutines.
 package gohn
 
+import "sort"
+
+// URLs to retrieve the IDs of the top stories, best stories, new stories, ask stories, show stories and job stories.
 const (
 	TOP_STORIES_URL  = "https://hacker-news.firebaseio.com/v0/topstories.json"
 	BEST_STORIES_URL = "https://hacker-news.firebaseio.com/v0/beststories.json"
@@ -18,16 +20,16 @@ type Story struct {
 	CommentsByIdMap ItemsIndex
 }
 
-// CalculateCommentsOrder calculates the order of the comments in a story.
+// SetCommentsPosition calculates the order of the comments in a story.
 // The order is calculated by traversing the Kids slice of the Story item
 // recursively (N-ary tree preorder traversal).
-// The order is stored in the Order field of the Item struct.
-func (s *Story) CalculateCommentsOrder() {
+// The order is stored in the Position field of the Item struct.
+func (s *Story) SetCommentsPosition() {
 	var n int
 	var preorder func(int, int)
 	preorder = func(id int, order int) {
 		comment := s.CommentsByIdMap[id]
-		comment.Order = order
+		comment.Position = order
 		s.CommentsByIdMap[id] = comment
 		for _, kid := range comment.Kids {
 			preorder(kid, n+1)
@@ -38,6 +40,20 @@ func (s *Story) CalculateCommentsOrder() {
 		preorder(kid, n)
 		n++
 	}
+}
+
+// GetOrderedCommentsIDs orders the comments in a story by their Position field
+// and returns a slice of comments IDs.
+func (s *Story) GetOrderedCommentsIDs() []int {
+	var comments []int
+	for _, comment := range s.CommentsByIdMap {
+		comments = append(comments, comment.ID)
+	}
+	sort.Slice(comments, func(i, j int) bool {
+		return s.CommentsByIdMap[comments[i]].Position < s.CommentsByIdMap[comments[j]].Position
+	})
+	return comments
+
 }
 
 // GetTopStories returns the IDs of up to 500 of the top stories on Hacker News.
