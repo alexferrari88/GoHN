@@ -8,36 +8,53 @@ import (
 )
 
 func main() {
-	// Instantiate a new client
-	client := gohn.NewDefaultClient()
+	// Instantiate a new client to retrieve data from the Hacker News API
+	hn := gohn.NewDefaultClient()
 
 	// Get the top 500 stories' IDs
-	topStoriesIds, _ := client.GetTopStoriesIDs()
+	topStoriesIds, _ := hn.GetTopStoriesIDs()
 
-	// Retrieve the first one
-	story, _ := client.GetItem(topStoriesIds[0])
+	// Retrieve the details of the first one
+	story, _ := hn.GetItem(topStoriesIds[0])
+
+	// Print the story's title
+	fmt.Println("Title:", story.Title)
+
+	// Print the story's author
+	fmt.Println("Author:", story.By)
+
+	// Print the story's score
+	fmt.Println("Score:", story.Score)
+
+	// Print the story's URL
+	fmt.Println("URL:", story.URL)
+
+	fmt.Println()
+	fmt.Println()
 
 	// Retrieve all the comments for that story
 	// UnescapeHTML is applied to each retrieved item to unescape HTML characters
-	commentsMap := client.RetrieveKidsItems(story, processors.UnescapeHTML())
+	commentsMap := hn.RetrieveKidsItems(story, processors.UnescapeHTML())
 
 	fmt.Printf("Comments found: %d\n", len(commentsMap))
 	fmt.Println()
 
-	// preorder traversal of the n-ary tree story.Kids
-	// to print the comments
-	var preorder func(int)
-	preorder = func(id int) {
+	// Create a Story struct to hold the story and its comments
+	storyWithComments := gohn.Story{
+		StoryItem:       story,
+		CommentsByIdMap: commentsMap,
+	}
+
+	// Calculate the position of each comment in the story
+	storyWithComments.SetCommentsPosition()
+
+	// Get an ordered list of comments' IDs (ordered by position)
+	orderedIDs := storyWithComments.GetOrderedCommentsIDs()
+
+	// Print the comments
+	for _, id := range orderedIDs {
 		comment := commentsMap[id]
 		fmt.Println(comment.Text)
-		for _, kid := range comment.Kids {
-			fmt.Print("\t")
-			preorder(kid)
-		}
-	}
-	for _, kid := range story.Kids {
-		fmt.Print("> ")
-		preorder(kid)
 		fmt.Println()
 	}
 
