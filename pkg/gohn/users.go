@@ -1,37 +1,40 @@
 ﻿package gohn
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 )
 
 // USER_URL is the URL for the user endpoint.
 const (
-	USER_URL = "https://hacker-news.firebaseio.com/v0/user/%s.json"
+	USER_URL = "user/%s.json"
 )
+
+// UsersService handles communication with the user
+// related methods of the Hacker News API.
+type UsersService service
 
 // User represents a single user from the Hacker News API.
 // https://github.com/HackerNews/API#users
 type User struct {
-	ID        string `json:"id"`
-	Created   int    `json:"created"`
-	Karma     int    `json:"karma"`
-	About     string `json:"about"`
-	Submitted []int  `json:"submitted"`
+	ID        *string `json:"id"`
+	Created   *int    `json:"created"`
+	Karma     *int    `json:"karma"`
+	About     *string `json:"about"`
+	Submitted *[]int  `json:"submitted"`
 }
 
-// GetUser returns a User given a username.
-func (c client) GetUser(username string) (User, error) {
-	var user User
-
-	url := fmt.Sprintf(USER_URL, username)
-	resp, err := c.retrieveFromURL(url)
+// GetByUsername returns a User given a username.
+func (s *UsersService) GetByUsername(ctx context.Context, username string) (*User, error) {
+	req, err := s.client.NewRequest("GET", fmt.Sprintf(USER_URL, username))
 	if err != nil {
-		return user, err
+		return nil, err
 	}
-	err = json.Unmarshal(resp, &user)
+
+	var user *User
+	_, err = s.client.Do(ctx, req, &user)
 	if err != nil {
-		return user, err
+		return nil, err
 	}
 
 	return user, nil

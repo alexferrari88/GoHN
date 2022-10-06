@@ -2,68 +2,130 @@
 
 import (
 	"context"
-	"io/ioutil"
+	"encoding/json"
+	"io"
 	"net/http"
+	"net/url"
 )
 
-// HTTPClient is an interface that is satisfied by http.Client.
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
+const (
+	Version = "1.0.0"
+
+	BASE_URL         = "https://hacker-news.firebaseio.com/v0/"
+	defaultUserAgent = "gohn/" + Version
+)
+
+// Client manages communication with the Hacker News API.
+type Client struct {
+	// HTTP client used to communicate with the API.
+	httpClient *http.Client
+	baseURL    *url.URL
+
+	UserAgent string
+
+	common service
+
+	// Services used for talking to different parts of the Hacker News API.
+	Items   *ItemsService
+	Stories *StoriesService
+	Users   *UsersService
+	Updates *UpdatesService
 }
-type client struct {
-	ctx    context.Context
-	client HTTPClient
+
+type service struct {
+	client *Client
 }
 
 // NewClient returns a new Client that will be used to make requests to the Hacker News API.
-// It uses context.Background() as the default context.
-func NewClient(ctx context.Context, httpClient HTTPClient) *client {
-	return &client{ctx: context.Background(), client: httpClient}
+// If a nil httpClient is provided, http.Client will be used.
+func NewClient(httpClient *http.Client) *Client {
+	if httpClient == nil {
+		httpClient = &http.Client{}
+	}
+
+	baseURL, _ := url.Parse(BASE_URL)
+	c := Client{httpClient: httpClient, baseURL: baseURL, UserAgent: defaultUserAgent}
+	c.common.client = &c
+	c.Items = (*ItemsService)(&c.common)
+	c.Stories = (*StoriesService)(&c.common)
+	c.Users = (*UsersService)(&c.common)
+	c.Updates = (*UpdatesService)(&c.common)
+	return &c
 }
 
-// NewClientWithContext returns a new Client that will be used to make requests to the Hacker News API
-// It uses the provided context for HTTP requests.
-func NewClientWithContext(ctx context.Context, httpClient HTTPClient) *client {
-	return &client{ctx: ctx, client: httpClient}
-}
-
-// NewDefaultClient returns a http.DefaultClient that will be used to make requests to the Hacker News API.
-// If a nil ctx is provided, context.Background() will be used for HTTP requests.
-func NewDefaultClient() *client {
-	return &client{ctx: context.Background(), client: http.DefaultClient}
-}
-
-// NewDefaultClientWithContext returns a new client to make requests to the Hacker News API.
-// It uses a http.DefaultClient and the provided context for HTTP requests.
-func NewDefaultClientWithContext(ctx context.Context) *client {
-	return &client{ctx: ctx, client: http.DefaultClient}
-}
-
-// SetContext sets the context for HTTP requests.
-func (c *client) SetContext(ctx context.Context) {
-	c.ctx = ctx
-}
-
-// retrieveFromURL sends a GET request to the given URL
-// and returns the raw response body values and an error.
-func (c client) retrieveFromURL(url string) ([]byte, error) {
-	var body []byte
-
-	req, err := http.NewRequestWithContext(c.ctx, http.MethodGet, url, nil)
+// NewRequest creates an API request.
+// path is a relative URL path (e.g. "items/1") and it will be resolved to the BaseURL of the Client.
+func (c *Client) NewRequest(method, path string) (*http.Request, error) {
+	u, err := c.baseURL.Parse(path)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.Do(req)
+	req, err := http.NewRequest(method, u.String(), nil)
 	if err != nil {
-		return body, err
+		return nil, err
 	}
+
+	if c.UserAgent != "" {
+		req.Header.Set("User-Agent", c.UserAgent)
+	}
+
+	return req, nil
+}
+
+// Do sends an API request and returns the API response.
+// The Hacker News API returns JSON which is decoded and
+// stored in the value pointed to by v, or returned as
+// an error if an API error has occurred.
+func (c *Client) Do(ctx context.Context, req *http.Request, v any) (*http.Response, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	req = req.WithContext(ctx)
+
+	resp, err := c.httpClient.Do(req)
+
+	if err != nil {
+		select {
+		case <-ctx.Done():
+			// If the context was canceled, return the context's error,
+			// which may be more useful than the underlying error.
+			return nil, ctx.Err()
+		default:
+		}
+		return nil, err
+	}
+
+	err = CheckResponse(resp)
+	if err != nil {
+		return resp, err
+	}
+
 	defer resp.Body.Close()
 
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return body, err
+	switch v := v.(type) {
+	case nil:
+	case io.Writer:
+		_, err = io.Copy(v, resp.Body)
+	default:
+		decErr := json.NewDecoder(resp.Body).Decode(v)
+		if decErr == io.EOF {
+			decErr = nil // ignore EOF errors caused by empty response body
+		}
+		if decErr != nil {
+			err = decErr
+		}
+	}
+	return resp, err
+}
+
+// CheckResponse checks the API response for errors, and returns them if present.
+func CheckResponse(r *http.Response) error {
+	// status codes between 200 and 299 are considered successful
+	if c := r.StatusCode; 200 <= c && c <= 299 {
+		return nil
 	}
 
-	return body, nil
+	return &ErrResponse{Response: r}
 }
