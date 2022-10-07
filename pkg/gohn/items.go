@@ -89,16 +89,28 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 	if item.Kids == nil {
 		return nil, errors.New("item has no kids")
 	}
-	// the map of items to return
-	mapCommentById := make(ItemsIndex)
-	// the channel of items to be added to the map
-	commentsChan := make(chan *Item)
-	// the channel of IDs to be retrieved
+	// channel of items to be added to the map
+	var commentsChan chan *Item
+	// channel of IDs to be retrieved
 	// kids found in the commentsChan will be added to this channel
 	// buffered so that initializing the queue doesn't block
-	kidsQueue := make(chan int, len(*item.Kids))
-	// Use an atomic counter to keep track of the number of items
-	commentsNumToFetch := int32(len(*item.Kids))
+	var kidsQueue chan int
+	// use an atomic counter to keep track of the number of items
+	var commentsNumToFetch int32
+	// map of items to return
+	var mapCommentById ItemsIndex
+	if item.Descendants != nil && *item.Descendants > 0 {
+		commentsNumToFetch = int32(*item.Descendants)
+		mapCommentById = make(ItemsIndex, commentsNumToFetch)
+		commentsChan = make(chan *Item, commentsNumToFetch)
+		kidsQueue = make(chan int, commentsNumToFetch)
+	} else {
+		commentsNumToFetch = int32(len(*item.Kids))
+		mapCommentById = make(ItemsIndex)
+		commentsChan = make(chan *Item)
+		kidsQueue = make(chan int, len(*item.Kids))
+	}
+
 	// initialize kidsQueue so that the fetching in the for loop can start
 	for _, kid := range *item.Kids {
 		kidsQueue <- kid
@@ -133,7 +145,7 @@ L:
 			if comment.ID != nil {
 				mapCommentById[*comment.ID] = comment
 				if comment.Kids != nil {
-					atomic.AddInt32(&commentsNumToFetch, int32(len(*comment.Kids)))
+					// atomic.AddInt32(&commentsNumToFetch, int32(len(*comment.Kids)))
 					go func() {
 						for _, kid := range *comment.Kids {
 							kidsQueue <- kid
