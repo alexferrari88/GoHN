@@ -11,10 +11,8 @@ import (
 )
 
 const (
-	Version = "1.0.0"
-
 	BASE_URL   = "https://hacker-news.firebaseio.com/v0/"
-	USER_AGENT = "gohn/" + Version
+	USER_AGENT = "GoHN/" + Version
 )
 
 // Client manages communication with the Hacker News API.
