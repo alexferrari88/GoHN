@@ -18,6 +18,9 @@ const (
 // StoriesService provides access to the stories endpoints of the Hacker News API.
 type StoriesService service
 
+// ItemsIndex is a map of Items indexed by their ID.
+type ItemsIndex map[int]*Item
+
 // Story represents a story on Hacker News.
 // It contains the pointer to the story item
 // as Parent and a map of comments by ID as CommentsByIdMap.

@@ -38,9 +38,6 @@ type Item struct {
 	Descendants *int    `json:"descendants,omitempty"`
 }
 
-// ItemsIndex is a map of Items indexed by their ID.
-type ItemsIndex map[int]*Item
-
 // ItemProcessor is used by ItemsService.Get and ItemsService.FetchAllKids
 // to process items after they are retrieved.
 // The package itemprocessor provides some common implementations.
