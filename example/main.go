@@ -51,7 +51,7 @@ func main() {
 	// Retrieve all the comments for that story
 	// UnescapeHTML is applied to each retrieved item to unescape HTML characters
 
-	commentsMap, err := hn.Items.FetchAllKids(ctx, story, processors.UnescapeHTML())
+	commentsMap, err := hn.Items.FetchAllDescendants(ctx, story, processors.UnescapeHTML())
 
 	if err != nil {
 		panic(err)

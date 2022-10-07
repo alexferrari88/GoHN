@@ -39,7 +39,7 @@ func FilterOutDeleted() gohn.ItemProcessor {
 		if item == nil {
 			return nil
 		}
-		if *item.Deleted {
+		if item.Deleted != nil && *item.Deleted {
 			return fmt.Errorf("Deleted item found")
 		}
 		return nil

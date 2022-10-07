@@ -15,9 +15,8 @@ func (e ErrInvalidItem) Error() string {
 
 type ErrResponse struct {
 	Response *http.Response
-	Message  string `json:"message"`
 }
 
 func (r *ErrResponse) Error() string {
-	return fmt.Sprintf("%d %v: %v", r.Response.StatusCode, r.Response.Request.URL, r.Message)
+	return fmt.Sprintf("Error %d for %v", r.Response.StatusCode, r.Response.Request.URL)
 }

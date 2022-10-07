@@ -2,159 +2,171 @@
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
-	"github.com/alexferrari88/gohn/pkg/gohn"
-	"github.com/alexferrari88/gohn/test/mocks"
+	"github.com/alexferrari88/gohn/test/setup"
 )
 
 func TestGetTopStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.TOP_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetTopStoriesIDs()
+	mux.HandleFunc("/topstories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetTopIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }
 
 func TestGetBestStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.BEST_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetBestStoriesIDs()
+	mux.HandleFunc("/beststories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetBestIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }
 
 func TestGetNewStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.NEW_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetNewStoriesIDs()
+	mux.HandleFunc("/newstories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetNewIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }
 
 func TestGetAskStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.ASK_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetAskStoriesIDs()
+	mux.HandleFunc("/askstories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetAskIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }
 
 func TestGetShowStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.SHOW_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetShowStoriesIDs()
+	mux.HandleFunc("/showstories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetShowIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }
 
 func TestGetJobStoriesIDs(t *testing.T) {
-	mockStories := []int{1, 2, 3}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockStories)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.JOB_STORIES_URL}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	stories, err := client.GetJobStoriesIDs()
+	mux.HandleFunc("/jobstories.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "[1,2,3]")
+	})
+
+	mockStoriesIDs := []int{1, 2, 3}
+	ctx := context.Background()
+
+	got, err := client.Stories.GetJobIDs(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	if len(stories) != len(mockStories) {
-		t.Errorf("expected %v stories, got %v", len(mockStories), len(stories))
+	if len(got) != len(mockStoriesIDs) {
+		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
 	}
 
-	for i, story := range stories {
-		if story != mockStories[i] {
-			t.Errorf("expected story %v, got %v", mockStories[i], story)
+	for i, story := range got {
+		if *story != mockStoriesIDs[i] {
+			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
 		}
 	}
 }

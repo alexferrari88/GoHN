@@ -6,27 +6,31 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/alexferrari88/gohn/pkg/gohn"
-	"github.com/alexferrari88/gohn/test/mocks"
+	"github.com/alexferrari88/gohn/test/setup"
 )
 
 func TestGetUser(t *testing.T) {
-	mockUser := gohn.User{
-		ID: "test",
-	}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockUser)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{fmt.Sprintf(gohn.USER_URL, mockUser.ID)}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	user, err := client.GetUser("test")
+	mockUserId := "testuser"
+
+	mux.HandleFunc(fmt.Sprintf("/user/%s.json", mockUserId), func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, fmt.Sprintf(`{"id": "%s"}`, mockUserId))
+	})
+
+	ctx := context.Background()
+	got, err := client.Users.GetByUsername(ctx, mockUserId)
+
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error getting user: %v", err)
 	}
 
-	if user.ID != mockUser.ID {
-		t.Errorf("expected user %v, got %v", mockUser, user)
+	if got == nil {
+		t.Fatalf("expected user to be %v, got nil", mockUserId)
+	}
+
+	if *got.ID != mockUserId {
+		t.Errorf("expected user id %s, got %v", mockUserId, *got.ID)
 	}
 }

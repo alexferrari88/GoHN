@@ -3,23 +3,25 @@
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
 	Version = "1.0.0"
 
-	BASE_URL         = "https://hacker-news.firebaseio.com/v0/"
-	defaultUserAgent = "gohn/" + Version
+	BASE_URL   = "https://hacker-news.firebaseio.com/v0/"
+	USER_AGENT = "gohn/" + Version
 )
 
 // Client manages communication with the Hacker News API.
 type Client struct {
 	// HTTP client used to communicate with the API.
 	httpClient *http.Client
-	baseURL    *url.URL
+	BaseURL    *url.URL
 
 	UserAgent string
 
@@ -36,6 +38,11 @@ type service struct {
 	client *Client
 }
 
+// GetHTTPClient returns the HTTP client used by the Client.
+func (c *Client) GetHTTPClient() *http.Client {
+	return c.httpClient
+}
+
 // NewClient returns a new Client that will be used to make requests to the Hacker News API.
 // If a nil httpClient is provided, http.Client will be used.
 func NewClient(httpClient *http.Client) *Client {
@@ -44,7 +51,7 @@ func NewClient(httpClient *http.Client) *Client {
 	}
 
 	baseURL, _ := url.Parse(BASE_URL)
-	c := Client{httpClient: httpClient, baseURL: baseURL, UserAgent: defaultUserAgent}
+	c := Client{httpClient: httpClient, BaseURL: baseURL, UserAgent: USER_AGENT}
 	c.common.client = &c
 	c.Items = (*ItemsService)(&c.common)
 	c.Stories = (*StoriesService)(&c.common)
@@ -56,7 +63,10 @@ func NewClient(httpClient *http.Client) *Client {
 // NewRequest creates an API request.
 // path is a relative URL path (e.g. "items/1") and it will be resolved to the BaseURL of the Client.
 func (c *Client) NewRequest(method, path string) (*http.Request, error) {
-	u, err := c.baseURL.Parse(path)
+	if !strings.HasSuffix(c.BaseURL.Path, "/") {
+		return nil, fmt.Errorf("BaseURL %q must have a trailing slash", c.BaseURL)
+	}
+	u, err := c.BaseURL.Parse(path)
 	if err != nil {
 		return nil, err
 	}

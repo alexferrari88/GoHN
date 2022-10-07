@@ -9,108 +9,173 @@ import (
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
-	"github.com/alexferrari88/gohn/test/mocks"
+	"github.com/alexferrari88/gohn/test/setup"
 )
 
-func setupMocks() (parent gohn.Item, kids []gohn.Item, mockClient *mocks.MockHTTPClient, err error) {
-	// parent is the main item with ID = 1. It has 3 kids (IDs = 2, 3, 4)
-	// kid[0] (ID = 2) has 2 kids (kid[3] (ID = 5) and kid[4] (ID = 6))
-	// kid[1] (ID = 3) has 1 kid (kid[5] (ID = 7))
-	// kid[2] (ID = 4) has 0 kids
-	mockItems := mocks.NewMockItems(7)
-	parent = mockItems[0]
-	parent.Type = "story"
-	kids = mockItems[1:]
-	mocks.AddKidsToMockItem(&parent, kids[0:3])
-	mocks.AddKidsToMockItem(&kids[0], kids[3:5])
-	mocks.AddKidsToMockItem(&kids[1], kids[5:6])
-
-	mockClient, err = mocks.SetupMockClient(parent, kids)
-
-	if err != nil {
-		return parent, kids, mockClient, fmt.Errorf("error setting up mock client: %v", err)
-	}
-	return
-}
-
 func TestGetMaxItemID(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
 	mockID := 123
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockID)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{gohn.MAX_ITEM_ID_URL}, []*http.Response{mockResponseJSON})
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	id, err := client.GetMaxItemID()
+	mux.HandleFunc("/maxitem.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%d", mockID)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.GetMaxID(ctx)
+
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error getting max item ID: %v", err)
 	}
 
-	if id != mockID {
-		t.Errorf("expected id %v, got %v", mockID, id)
+	if got == nil {
+		t.Fatalf("expected max item ID to be %v, got nil", mockID)
+	}
+
+	if *got != mockID {
+		t.Errorf("expected max item ID %d, got %d", mockID, got)
 	}
 }
 
 func TestGetItem(t *testing.T) {
-	mockItem := gohn.Item{
-		ID: 1,
-	}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockItem)
-	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
-	}
-	mockClient := mocks.NewMockClient([]string{fmt.Sprintf(gohn.ITEM_URL, 1)}, []*http.Response{mockResponseJSON})
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	item, err := client.GetItem(1)
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "title": "test title", "url": "http://example.com"}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.Get(ctx, 1)
+
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
-	if item.ID != mockItem.ID {
-		t.Errorf("expected item %v, got %v", mockItem, item)
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
+
+	if *got.ID != 1 {
+		t.Errorf("expected item ID %d, got %d", 1, got.ID)
+	}
+	if *got.Type != "story" {
+		t.Errorf("expected item type %s, got %s", "story", *got.Type)
+	}
+	if *got.Title != "test title" {
+		t.Errorf("expected item title %s, got %s", "test title", *got.Title)
+	}
+	if *got.URL != "http://example.com" {
+		t.Errorf("expected item URL %s, got %s", "http://example.com", *got.URL)
 	}
 }
 
-func TestRetrieveKidsItems(t *testing.T) {
-	parent, kids, mockClient, err := setupMocks()
+func TestFetchAllDescendants(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockID := 1
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6]}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7]}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment"}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
 
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(parent, nil)
-
-	if len(items) != 6 {
-		t.Errorf("expected 6 items, got %v", len(items))
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	for _, kid := range kids {
-		if _, ok := items[kid.ID]; !ok {
-			t.Errorf("expected item %v, got %v", kid, items)
+	if len(got) != 6 {
+		t.Errorf("expected 6 items, got %v", len(got))
+	}
+
+	for _, id := range []int{2, 3, 4, 5, 6, 7} {
+		if got[id] == nil {
+			t.Fatalf("expected item %v to be %v, got nil", id, id)
+		}
+		if *got[id].ID != id {
+			t.Errorf("expected item ID %d, got %d", id, *got[id].ID)
 		}
 	}
 }
 
-func TestCalculateCommentsPosition(t *testing.T) {
-	parent, _, mockClient, err := setupMocks()
+func TestSetCommentsPosition(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockID := 1
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6]}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7]}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment"}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
 
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(parent, nil)
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
 
-	if len(items) != 6 {
-		t.Fatalf("expected 6 items, got %v", len(items))
+	if len(got) != 6 {
+		t.Errorf("expected 6 items, got %v", len(got))
 	}
 
 	story := gohn.Story{
-		StoryItem:       parent,
-		CommentsByIdMap: items,
+		Parent:          mockParent,
+		CommentsByIdMap: got,
 	}
 
 	story.SetCommentsPosition()
@@ -121,35 +186,67 @@ func TestCalculateCommentsPosition(t *testing.T) {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return story.CommentsByIdMap[keys[i]].Position < story.CommentsByIdMap[keys[j]].Position
+		return *(story.CommentsByIdMap[keys[i]].Position) < *(story.CommentsByIdMap[keys[j]].Position)
 	})
 
 	// expected order
 	expectedPositionIDs := []int{2, 5, 6, 3, 7, 4}
 	for i, id := range expectedPositionIDs {
-		if id != keys[i] && story.CommentsByIdMap[id].Position != i {
+		if id != keys[i] && *(story.CommentsByIdMap[id].Position) != i {
 			t.Errorf("expected order %v, got %v", expectedPositionIDs, keys)
 		}
 	}
 }
 
 func TestIsTopLevelComment(t *testing.T) {
-	parent, _, mockClient, err := setupMocks()
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockID := 1
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment", "parent": 1}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment",	"parent": 3}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
 
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(parent, nil)
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
 
-	if len(items) != 6 {
-		t.Fatalf("expected 6 items, got %v", len(items))
+	if len(got) != 6 {
+		t.Errorf("expected 6 items, got %v", len(got))
 	}
 
 	story := gohn.Story{
-		StoryItem:       parent,
-		CommentsByIdMap: items,
+		Parent:          mockParent,
+		CommentsByIdMap: got,
 	}
 
 	expectedByID := map[int]bool{
@@ -162,35 +259,67 @@ func TestIsTopLevelComment(t *testing.T) {
 	}
 
 	for _, comment := range story.CommentsByIdMap {
-		if story.IsTopLevelComment(comment) != expectedByID[comment.ID] {
-			t.Errorf("expected ID %d to be %v, got %v", comment.ID, expectedByID[comment.ID], story.IsTopLevelComment(comment))
+		if isTop, _ := story.IsTopLevelComment(comment); isTop != expectedByID[*comment.ID] {
+			t.Errorf("expected ID %d to be %v, got %v", *comment.ID, expectedByID[*comment.ID], isTop)
 		}
 	}
 }
 
 func TestGetOrderedCommentsIDs(t *testing.T) {
-	parent, _, mockClient, err := setupMocks()
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockID := 1
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment", "parent": 1}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment",	"parent": 3}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
 
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(parent, nil)
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
 
-	if len(items) != 6 {
-		t.Fatalf("expected 6 items, got %v", len(items))
+	if len(got) != 6 {
+		t.Errorf("expected 6 items, got %v", len(got))
 	}
 
 	story := gohn.Story{
-		StoryItem:       parent,
-		CommentsByIdMap: items,
+		Parent:          mockParent,
+		CommentsByIdMap: got,
 	}
 
 	story.SetCommentsPosition()
 
 	expectedIDs := []int{2, 5, 6, 3, 7, 4}
-	orderedIDs := story.GetOrderedCommentsIDs()
+	orderedIDs, _ := story.GetOrderedCommentsIDs()
 
 	if !reflect.DeepEqual(expectedIDs, orderedIDs) {
 		t.Errorf("expected order %v, got %v", expectedIDs, orderedIDs)
@@ -198,38 +327,85 @@ func TestGetOrderedCommentsIDs(t *testing.T) {
 }
 
 func TestGetStoryIdFromComment(t *testing.T) {
-	parent, kids, mockClient, err := setupMocks()
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
 
-	if err != nil {
-		t.Error(err)
-	}
+	mockID := 1
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	items := client.RetrieveKidsItems(parent, nil)
-
-	if len(items) != 6 {
-		t.Fatalf("expected 6 items, got %v", len(items))
-	}
-
-	mockRespKid0JSON, _ := mocks.NewMockResponse(http.StatusOK, kids[0])
-	mockRespParentJSON, _ := mocks.NewMockResponse(http.StatusOK, parent)
-	mockClient = mocks.NewMockClient([]string{
-		fmt.Sprintf(gohn.ITEM_URL, 2),
-		fmt.Sprintf(gohn.ITEM_URL, 1),
-	}, []*http.Response{
-		mockRespKid0JSON,
-		mockRespParentJSON,
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment", "parent": 1}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment",	"parent": 3}`)
 	})
 
-	client = gohn.NewClient(context.Background(), mockClient)
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
+
+	if err != nil {
+		t.Fatalf("unexpected error getting item: %v", err)
+	}
+
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
+
+	if len(got) != 6 {
+		t.Errorf("expected 6 items, got %v", len(got))
+	}
 
 	expectedStoryID := 1
-	storyID, err := client.GetStoryIdFromComment(items[5])
+	kidID := 6
+	kidsParentId := 2
+	kidsType := "comment"
+	storyID, err := client.Items.GetStoryIdFromComment(ctx, &gohn.Item{ID: &kidID, Parent: &kidsParentId, Type: &kidsType})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if expectedStoryID != storyID {
+	if storyID == nil {
+		t.Fatalf("expected storyID to be %v, got nil", expectedStoryID)
+	}
+
+	if expectedStoryID != *storyID {
 		t.Errorf("expected story ID %v, got %v", expectedStoryID, storyID)
+	}
+}
+
+func TestGetItem_nullResponse(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `null`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.Get(ctx, 1)
+
+	if err != nil {
+		t.Fatalf("unexpected error getting item: %v", err)
+	}
+
+	if got != nil {
+		t.Errorf("expected item to be nil, got %v", got)
 	}
 }

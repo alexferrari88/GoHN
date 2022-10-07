@@ -76,13 +76,13 @@ func (s *ItemsService) GetIDsFromURL(ctx context.Context, url string) ([]*int, e
 	return ids, nil
 }
 
-// FetchAllKids returns a map of all the comments for a given Item.
+// FetchAllDescendants returns a map of all the comments for a given Item.
 // The map key is the ID of the item. The map value is a pointer to the item itself.
 // The map can be used to retrieve the comments for a given item by
 // traversing the Kids slice of the item recursively (N-ary tree preorder traversal).
 // See an implementation in the example directory.
 // If the ItemProcessor returns an error, the item will not be added to the map.
-func (s *ItemsService) FetchAllKids(ctx context.Context, item *Item, fn ItemProcessor) (ItemsIndex, error) {
+func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn ItemProcessor) (ItemsIndex, error) {
 	if item == nil {
 		return nil, errors.New("item is nil")
 	}

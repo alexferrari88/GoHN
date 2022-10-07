@@ -2,47 +2,72 @@ package gohntest
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
-	"github.com/alexferrari88/gohn/test/mocks"
+	"github.com/alexferrari88/gohn/test/setup"
 )
 
 func TestGetUpdates(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockItems := []int{1, 2, 3, 4, 5}
+	mockProfiles := []string{"user1", "user2", "user3", "user4", "user5"}
+
 	mockUpdates := gohn.Update{
-		Items:    []int{1, 2, 3},
-		Profiles: []string{"user1", "user2"},
+		Items:    &mockItems,
+		Profiles: &mockProfiles,
 	}
-	mockResponseJSON, err := mocks.NewMockResponse(http.StatusOK, mockUpdates)
+
+	mockUpdatesJSON, err := json.Marshal(mockUpdates)
 	if err != nil {
-		t.Errorf("error creating mock response: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	mockClient := mocks.NewMockClient([]string{gohn.UPDATES_URL}, []*http.Response{mockResponseJSON})
 
-	client := gohn.NewClient(context.Background(), mockClient)
-	updates, err := client.GetUpdates()
+	mux.HandleFunc("/updates.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, string(mockUpdatesJSON))
+	})
+
+	ctx := context.Background()
+	got, err := client.Updates.Get(ctx)
+
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatalf("unexpected error getting updates: %v", err)
 	}
 
-	if len(updates.Items) != len(mockUpdates.Items) {
-		t.Errorf("expected updates %v, got %v", mockUpdates, updates)
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(updates.Profiles) != len(mockUpdates.Profiles) {
-		t.Errorf("expected updates %v, got %v", mockUpdates, updates)
+	if got.Items == nil {
+		t.Fatalf("expected items to be %v, got nil", mockItems)
 	}
 
-	for i, id := range updates.Items {
-		if id != mockUpdates.Items[i] {
-			t.Errorf("expected updates %v, got %v", mockUpdates, updates)
+	if got.Profiles == nil {
+		t.Fatalf("expected profiles to be %v, got nil", mockProfiles)
+	}
+
+	if len(*got.Items) != len(*mockUpdates.Items) {
+		t.Errorf("expected updates %v, got %v", mockUpdates, *got)
+	}
+
+	if len(*got.Profiles) != len(*mockUpdates.Profiles) {
+		t.Errorf("expected updates %v, got %v", mockUpdates, *got)
+	}
+
+	for i, id := range *got.Items {
+		if id != (*mockUpdates.Items)[i] {
+			t.Errorf("expected updates %v, got %v", mockUpdates, *got)
 		}
 	}
 
-	for i, profile := range updates.Profiles {
-		if profile != mockUpdates.Profiles[i] {
-			t.Errorf("expected updates %v, got %v", mockUpdates, updates)
+	for i, profile := range *got.Profiles {
+		if profile != (*mockUpdates.Profiles)[i] {
+			t.Errorf("expected updates %v, got %v", mockUpdates, *got)
 		}
 	}
 }
