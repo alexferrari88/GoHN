@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
+	"sync"
 )
 
 // ITEM_URL is the URL to retrieve an item given an ID.
@@ -89,74 +89,82 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 	if item.Kids == nil {
 		return nil, errors.New("item has no kids")
 	}
+	var wg sync.WaitGroup
 	// channel of items to be added to the map
 	var commentsChan chan *Item
 	// channel of IDs to be retrieved
 	// kids found in the commentsChan will be added to this channel
 	// buffered so that initializing the queue doesn't block
 	var kidsQueue chan int
-	// use an atomic counter to keep track of the number of items
-	var commentsNumToFetch int32
+	// channel to signaling that the processing is done
+	done := make(chan struct{})
+	// number of items to fetch and process
+	var commentsNumToFetch int
 	// map of items to return
 	var mapCommentById ItemsIndex
+
 	if item.Descendants != nil && *item.Descendants > 0 {
-		commentsNumToFetch = int32(*item.Descendants)
+		commentsNumToFetch = *item.Descendants
 		mapCommentById = make(ItemsIndex, commentsNumToFetch)
 		commentsChan = make(chan *Item, commentsNumToFetch)
 		kidsQueue = make(chan int, commentsNumToFetch)
+		wg.Add(commentsNumToFetch)
 	} else {
-		commentsNumToFetch = int32(len(*item.Kids))
+		commentsNumToFetch = len(*item.Kids)
 		mapCommentById = make(ItemsIndex)
 		commentsChan = make(chan *Item)
-		kidsQueue = make(chan int, len(*item.Kids))
+		kidsQueue = make(chan int, commentsNumToFetch)
+		wg.Add(commentsNumToFetch)
 	}
 
 	// initialize kidsQueue so that the fetching in the for loop can start
 	for _, kid := range *item.Kids {
 		kidsQueue <- kid
 	}
+
+	// goroutine to close the done channel when all the items are fetched and processed
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 L:
 	for {
 		select {
+		// fetch the item and send it to commentsChan
 		case currentId := <-kidsQueue:
-			if commentsNumToFetch > 0 {
-				go func() {
-					it, err := s.Get(ctx, currentId)
+			go func() {
+				it, err := s.Get(ctx, currentId)
+				if err != nil {
+					// TODO: add better error handling
+					wg.Done()
+					return
+				}
+				if fn != nil {
+					err = fn(it)
 					if err != nil {
 						// TODO: add better error handling
-						atomic.AddInt32(&commentsNumToFetch, -1)
+						wg.Done()
 						return
 					}
-					if fn != nil {
-						err = fn(it)
-						if err != nil {
-							// TODO: add better error handling
-							atomic.AddInt32(&commentsNumToFetch, -1)
-							return
-						}
-					}
-					commentsChan <- it
-				}()
-			} else {
-				break L
-			}
+				}
+				commentsChan <- it
+			}()
+		// add the item to the map and, if it has any kid,
+		// add their IDs to the queue so that they can be fetched
 		case comment := <-commentsChan:
-			atomic.AddInt32(&commentsNumToFetch, -1)
 			if comment.ID != nil {
 				mapCommentById[*comment.ID] = comment
-				if comment.Kids != nil {
-					// atomic.AddInt32(&commentsNumToFetch, int32(len(*comment.Kids)))
+				if comment.Kids != nil && len(*comment.Kids) > 0 {
 					go func() {
 						for _, kid := range *comment.Kids {
 							kidsQueue <- kid
 						}
 					}()
 				}
+				wg.Done()
 			}
-		default:
-			if commentsNumToFetch == 0 {
-				break L
-			}
+		case <-done:
+			break L
 		}
 	}
 	return mapCommentById, nil

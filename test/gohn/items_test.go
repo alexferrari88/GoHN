@@ -2,6 +2,7 @@ package gohntest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -407,5 +408,57 @@ func TestGetItem_nullResponse(t *testing.T) {
 
 	if got != nil {
 		t.Errorf("expected item to be nil, got %v", got)
+	}
+}
+
+func generateBenchmarkItems(s, n int) []*gohn.Item {
+	var items []*gohn.Item
+	for i := s; i < n; i++ {
+		i := i
+		items = append(items, &gohn.Item{ID: &i})
+	}
+	return items
+}
+
+func BenchmarkFetchAllKids(b *testing.B) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockParentID := 1
+	mockInitialKidsIDs := []int{2, 3, 4}
+	mockExtraKids := generateBenchmarkItems(5, 10)
+	mockKidID2KidsIDs := []int{5, 6}
+	mockKidID2 := gohn.Item{ID: &mockInitialKidsIDs[0], Kids: &mockKidID2KidsIDs}
+	mockKidID3KidsIDs := []int{7}
+	mockKidID3 := gohn.Item{ID: &mockInitialKidsIDs[1], Kids: &mockKidID3KidsIDs}
+	mockKidID4 := gohn.Item{ID: &mockInitialKidsIDs[2]}
+	mockKids := []*gohn.Item{&mockKidID2, &mockKidID3, &mockKidID4}
+	mockKids = append(mockKids, mockExtraKids[3:]...)
+
+	var mockKidsIDs = new([]int)
+	for _, kid := range mockKids {
+		*mockKidsIDs = append(*mockKidsIDs, *kid.ID)
+	}
+
+	numDescendants := len(*mockKidsIDs) + 3
+
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: mockKidsIDs, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprintf("%d", numDescendants)+`}`)
+	})
+
+	// create mux.HandleFunc for each kid
+	for _, kid := range mockKids {
+		kidJSON, _ := json.Marshal(kid)
+		mux.HandleFunc(fmt.Sprintf("/item/%v.json", *kid.ID), func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, string(kidJSON))
+		})
+	}
+
+	ctx := context.Background()
+	for n := 0; n < b.N; n++ {
+		_, _ = client.Items.FetchAllDescendants(ctx, mockParent, nil)
 	}
 }
