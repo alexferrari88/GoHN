@@ -37,13 +37,14 @@ func (s *Story) SetCommentsPosition() {
 	var n int
 	var preorder func(int, int)
 	preorder = func(id int, order int) {
-		comment := s.CommentsByIdMap[id]
-		comment.Position = &order
-		s.CommentsByIdMap[id] = comment
-		if comment.Kids != nil {
-			for _, kid := range *comment.Kids {
-				preorder(kid, n+1)
-				n++
+		if comment, ok := s.CommentsByIdMap[id]; ok {
+			comment.Position = &order
+			s.CommentsByIdMap[id] = comment
+			if comment.Kids != nil {
+				for _, kid := range *comment.Kids {
+					preorder(kid, n+1)
+					n++
+				}
 			}
 		}
 	}

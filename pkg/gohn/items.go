@@ -41,7 +41,7 @@ type Item struct {
 // ItemProcessor is used by ItemsService.Get and ItemsService.FetchAllKids
 // to process items after they are retrieved.
 // The package itemprocessor provides some common implementations.
-type ItemProcessor func(*Item) error
+type ItemProcessor func(*Item, *sync.WaitGroup) error
 
 // Get returns an Item given an ID.
 func (s *ItemsService) Get(ctx context.Context, id int) (*Item, error) {
@@ -137,7 +137,7 @@ L:
 					return
 				}
 				if fn != nil {
-					err = fn(it)
+					err = fn(it, &wg)
 					if err != nil {
 						// TODO: add better error handling
 						wg.Done()
