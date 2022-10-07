@@ -1,4 +1,4 @@
-﻿package gohn
+package gohn
 
 import (
 	"context"
@@ -17,19 +17,14 @@ const (
 
 // Client manages communication with the Hacker News API.
 type Client struct {
-	// HTTP client used to communicate with the API.
 	httpClient *http.Client
 	BaseURL    *url.URL
-
-	UserAgent string
-
-	common service
-
-	// Services used for talking to different parts of the Hacker News API.
-	Items   *ItemsService
-	Stories *StoriesService
-	Users   *UsersService
-	Updates *UpdatesService
+	common     service
+	Items      *ItemsService
+	Stories    *StoriesService
+	Users      *UsersService
+	Updates    *UpdatesService
+	UserAgent  string
 }
 
 type service struct {

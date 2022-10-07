@@ -12,10 +12,6 @@ import (
 	"github.com/alexferrari88/gohn/test/setup"
 )
 
-const (
-	baseTestURLPath = "/hn-v0"
-)
-
 func TestNewClient(t *testing.T) {
 	c := gohn.NewClient(nil)
 
@@ -105,7 +101,11 @@ func TestDo(t *testing.T) {
 
 	body := new(foo)
 	ctx := context.Background()
-	c.Do(ctx, req, body)
+	_, err := c.Do(ctx, req, body)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
 
 	if body.Foo != "bar" {
 		t.Errorf("expected body.Foo to be bar, got %v", body.Foo)

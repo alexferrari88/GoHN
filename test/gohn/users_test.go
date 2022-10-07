@@ -16,7 +16,7 @@ func TestGetUser(t *testing.T) {
 	mockUserId := "testuser"
 
 	mux.HandleFunc(fmt.Sprintf("/user/%s.json", mockUserId), func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, fmt.Sprintf(`{"id": "%s"}`, mockUserId))
+		fmt.Fprintf(w, fmt.Sprintf(`{"id": "%s"}`, mockUserId))
 	})
 
 	ctx := context.Background()
