@@ -41,7 +41,7 @@ type Item struct {
 // ItemProcessor is used by ItemsService.Get and ItemsService.FetchAllKids
 // to process items after they are retrieved.
 // The package itemprocessor provides some common implementations.
-type ItemProcessor func(*Item, *sync.WaitGroup) error
+type ItemProcessor func(*Item, *sync.WaitGroup) (bool, error)
 
 // Get returns an Item given an ID.
 func (s *ItemsService) Get(ctx context.Context, id int) (*Item, error) {
@@ -79,6 +79,8 @@ func (s *ItemsService) GetIDsFromURL(ctx context.Context, url string) ([]*int, e
 // traversing the Kids slice of the item recursively (N-ary tree preorder traversal).
 // See an implementation in the example directory.
 // If the ItemProcessor returns an error, the item will not be added to the map.
+// Its kids will be added to the queue only if the ItemProcessors returns false, together with the error.
+// For more information on the ItemProcessor, check the gohn/processors package.
 func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn ItemProcessor) (ItemsIndex, error) {
 	if item == nil {
 		return nil, errors.New("item is nil")
@@ -137,9 +139,22 @@ L:
 					return
 				}
 				if fn != nil {
-					err = fn(it, &wg)
-					if err != nil {
+					excludeKids, err := fn(it, &wg)
+					if err != nil && excludeKids {
 						// TODO: add better error handling
+						wg.Done()
+						if it.Kids != nil {
+							for range *it.Kids {
+								wg.Done()
+							}
+						}
+						return
+					} else if err != nil && !excludeKids {
+						if it.Kids != nil {
+							for _, kid := range *it.Kids {
+								kidsQueue <- kid
+							}
+						}
 						wg.Done()
 						return
 					}

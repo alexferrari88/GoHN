@@ -14,7 +14,7 @@ func TestUnescapeHTML(t *testing.T) {
 	i := &gohn.Item{ID: &id, Text: &expectedText}
 
 	f := UnescapeHTML()
-	err := f(i, &wg)
+	_, err := f(i, &wg)
 
 	if err != nil {
 		t.Fatalf("unexpected error unescaping HTML: %v", err)

@@ -2,11 +2,12 @@ package gohntest
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/alexferrari88/gohn/pkg/gohn"
@@ -411,54 +412,131 @@ func TestGetItem_nullResponse(t *testing.T) {
 	}
 }
 
-func generateBenchmarkItems(s, n int) []*gohn.Item {
-	var items []*gohn.Item
-	for i := s; i < n; i++ {
-		i := i
-		items = append(items, &gohn.Item{ID: &i})
-	}
-	return items
-}
-
-func BenchmarkFetchAllKids(b *testing.B) {
+func TestFetchAllDescendants_Processor_excludeKids(t *testing.T) {
 	client, mux, _, teardown := setup.Init()
 	defer teardown()
 
 	mockParentID := 1
-	mockInitialKidsIDs := []int{2, 3, 4}
-	mockExtraKids := generateBenchmarkItems(5, 10)
-	mockKidID2KidsIDs := []int{5, 6}
-	mockKidID2 := gohn.Item{ID: &mockInitialKidsIDs[0], Kids: &mockKidID2KidsIDs}
-	mockKidID3KidsIDs := []int{7}
-	mockKidID3 := gohn.Item{ID: &mockInitialKidsIDs[1], Kids: &mockKidID3KidsIDs}
-	mockKidID4 := gohn.Item{ID: &mockInitialKidsIDs[2]}
-	mockKids := []*gohn.Item{&mockKidID2, &mockKidID3, &mockKidID4}
-	mockKids = append(mockKids, mockExtraKids[3:]...)
-
-	var mockKidsIDs = new([]int)
-	for _, kid := range mockKids {
-		*mockKidsIDs = append(*mockKidsIDs, *kid.ID)
-	}
-
-	numDescendants := len(*mockKidsIDs) + 3
-
+	idToExclude := 2
+	excludedItemsIDs := []int{idToExclude, 5, 6}
+	numDescendants := 6
 	mockType := "story"
-	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: mockKidsIDs, Descendants: &numDescendants}
+	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprintf("%d", numDescendants)+`}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment", "parent": 1}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment",	"parent": 3}`)
 	})
 
-	// create mux.HandleFunc for each kid
-	for _, kid := range mockKids {
-		kidJSON, _ := json.Marshal(kid)
-		mux.HandleFunc(fmt.Sprintf("/item/%v.json", *kid.ID), func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, string(kidJSON))
-		})
+	ctx := context.Background()
+	processor := func(item *gohn.Item, wg *sync.WaitGroup) (bool, error) {
+		wg.Add(1)
+		defer wg.Done()
+		if item.ID != nil && *item.ID == idToExclude {
+			return true, errors.New("mock error")
+		}
+		return false, nil
+	}
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, processor)
+
+	if err != nil {
+		t.Fatalf("unexpected error getting item: %v", err)
 	}
 
+	if got == nil {
+		t.Fatalf("expected items not to be nil")
+	}
+
+	if len(got) != len(excludedItemsIDs) {
+		t.Errorf("expected %d items, got %v", len(excludedItemsIDs), len(got))
+	}
+
+	// check if any item with ID in excludedItemsIDs is in the result
+	for _, item := range got {
+		for _, excludedID := range excludedItemsIDs {
+			if item.ID != nil && *item.ID == excludedID {
+				t.Errorf("expected item with ID %v not to be in the result", excludedID)
+			}
+		}
+	}
+}
+
+func TestFetchAllDescendants_Processor_includeKids(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockParentID := 1
+	idToExclude := 2
+	numDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7], "parent": 1}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment", "parent": 1}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment", "parent": 2}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment",	"parent": 3}`)
+	})
+
 	ctx := context.Background()
-	for n := 0; n < b.N; n++ {
-		_, _ = client.Items.FetchAllDescendants(ctx, mockParent, nil)
+	processor := func(item *gohn.Item, wg *sync.WaitGroup) (bool, error) {
+		wg.Add(1)
+		defer wg.Done()
+		if item.ID != nil && *item.ID == idToExclude {
+			return false, errors.New("mock error")
+		}
+		return false, nil
+	}
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, processor)
+
+	if err != nil {
+		t.Fatalf("unexpected error getting item: %v", err)
+	}
+
+	if got == nil {
+		t.Fatalf("expected items not to be nil")
+	}
+
+	if len(got) != numDescendants-1 {
+		t.Errorf("expected %d items, got %v", numDescendants-1, len(got))
+	}
+
+	// check if the excluded item is in the result
+	for _, item := range got {
+		if item.ID != nil && *item.ID == idToExclude {
+			t.Errorf("expected item with ID %v not to be in the result", idToExclude)
+		}
 	}
 }
