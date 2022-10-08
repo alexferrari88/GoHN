@@ -2,6 +2,7 @@ package gohntest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -14,9 +15,20 @@ func TestGetUser(t *testing.T) {
 	defer teardown()
 
 	mockUserId := "testuser"
+	mockUser := struct {
+		ID string `json:"id"`
+	}{
+		ID: mockUserId,
+	}
+
+	mockUserJSON, err := json.Marshal(mockUser)
+
+	if err != nil {
+		t.Fatalf("error marshalling mock user: %v", err)
+	}
 
 	mux.HandleFunc(fmt.Sprintf("/user/%s.json", mockUserId), func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, fmt.Sprintf(`{"id": "%s"}`, mockUserId))
+		fmt.Fprint(w, string(mockUserJSON))
 	})
 
 	ctx := context.Background()
