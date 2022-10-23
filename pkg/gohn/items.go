@@ -117,9 +117,11 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 	}
 
 	// initialize kidsQueue so that the fetching in the for loop can start
-	for _, kid := range *item.Kids {
-		kidsQueue <- kid
-	}
+	go func() {
+		for _, kid := range *item.Kids {
+			kidsQueue <- kid
+		}
+	}()
 
 	// goroutine to close the done channel when all the items are fetched and processed
 	go func() {
@@ -158,6 +160,10 @@ L:
 						wg.Done()
 						return
 					}
+				}
+				if it.Dead != nil && *it.Dead {
+					wg.Done()
+					return
 				}
 				commentsChan <- it
 			}()
