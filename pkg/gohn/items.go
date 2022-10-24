@@ -133,7 +133,7 @@ L:
 		select {
 		// fetch the item and send it to commentsChan
 		case currentId := <-kidsQueue:
-			go func() {
+			go func(wg *sync.WaitGroup, currentId int) {
 				it, err := s.Get(ctx, currentId)
 				if err != nil {
 					// TODO: add better error handling
@@ -141,12 +141,13 @@ L:
 					return
 				}
 				if fn != nil {
-					excludeKids, err := fn(it, &wg)
+					excludeKids, err := fn(it, wg)
 					if err != nil && excludeKids {
 						// TODO: add better error handling
 						wg.Done()
 						if it.Kids != nil {
 							for range *it.Kids {
+								// TODO: doesn't remove kids' kids from the waitgroup
 								wg.Done()
 							}
 						}
@@ -161,26 +162,22 @@ L:
 						return
 					}
 				}
-				if it.Dead != nil && *it.Dead {
-					wg.Done()
-					return
-				}
 				commentsChan <- it
-			}()
+			}(&wg, currentId)
 		// add the item to the map and, if it has any kid,
 		// add their IDs to the queue so that they can be fetched
 		case comment := <-commentsChan:
 			if comment.ID != nil {
 				mapCommentById[*comment.ID] = comment
 				if comment.Kids != nil && len(*comment.Kids) > 0 {
-					go func() {
+					go func(comment *Item) {
 						for _, kid := range *comment.Kids {
 							kidsQueue <- kid
 						}
-					}()
+					}(comment)
 				}
-				wg.Done()
 			}
+			wg.Done()
 		case <-done:
 			break L
 		}
