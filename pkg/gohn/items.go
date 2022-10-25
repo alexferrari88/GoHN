@@ -107,14 +107,18 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 		mapCommentById = make(ItemsIndex, commentsNumToFetch)
 		commentsChan = make(chan *Item, commentsNumToFetch)
 		kidsQueue = make(chan int, commentsNumToFetch)
-		wg.Add(commentsNumToFetch)
 	} else {
 		commentsNumToFetch = len(*item.Kids)
 		mapCommentById = make(ItemsIndex)
 		commentsChan = make(chan *Item)
 		kidsQueue = make(chan int, commentsNumToFetch)
-		wg.Add(commentsNumToFetch)
 	}
+
+	wg.Add(len(*item.Kids))
+
+	// the following variables are used to signal the start of the processing
+	start := make(chan struct{})
+	var startOnce sync.Once
 
 	// initialize kidsQueue so that the fetching in the for loop can start
 	go func() {
@@ -125,14 +129,26 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 
 	// goroutine to close the done channel when all the items are fetched and processed
 	go func() {
+		// wait for the first kid to be in the queue
+		// in this way, we don't close the done channel before the processing has started
+		<-start
+		// the first kid has been added to the queue
+		// it is safe now to start waiting
 		wg.Wait()
 		close(done)
 	}()
 L:
 	for {
 		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		// fetch the item and send it to commentsChan
 		case currentId := <-kidsQueue:
+			// once the first kid has been added to the queue, signal the start of the processing
+			// this is done to avoid closing the done channel before the processing has started
+			startOnce.Do(func() {
+				close(start)
+			})
 			go func(wg *sync.WaitGroup, currentId int) {
 				it, err := s.Get(ctx, currentId)
 				if err != nil {
@@ -145,15 +161,10 @@ L:
 					if err != nil && excludeKids {
 						// TODO: add better error handling
 						wg.Done()
-						if it.Kids != nil {
-							for range *it.Kids {
-								// TODO: doesn't remove kids' kids from the waitgroup
-								wg.Done()
-							}
-						}
 						return
 					} else if err != nil && !excludeKids {
 						if it.Kids != nil {
+							wg.Add(len(*it.Kids))
 							for _, kid := range *it.Kids {
 								kidsQueue <- kid
 							}
@@ -170,6 +181,7 @@ L:
 			if comment.ID != nil {
 				mapCommentById[*comment.ID] = comment
 				if comment.Kids != nil && len(*comment.Kids) > 0 {
+					wg.Add(len(*comment.Kids))
 					go func(comment *Item) {
 						for _, kid := range *comment.Kids {
 							kidsQueue <- kid

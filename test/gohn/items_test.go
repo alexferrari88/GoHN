@@ -540,3 +540,64 @@ func TestFetchAllDescendants_Processor_includeKids(t *testing.T) {
 		}
 	}
 }
+
+// When a post is fairly active, the actual number of descendants can be
+// higher than the number of descendants returned by the API.
+// This test checks that we are still getting all comments, even if
+// the number of descendants returned by the API is lower than the actual number of descendants.
+func TestFetchAllDescendants_NumDescendantsLowerThanActual(t *testing.T) {
+	client, mux, _, teardown := setup.Init()
+	defer teardown()
+
+	mockID := 1
+	numDescendants := 1
+	actualDescendants := 6
+	mockType := "story"
+	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
+
+	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
+	})
+	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6]}`)
+	})
+	mux.HandleFunc("/item/3.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 3, "type": "comment", "kids": [7]}`)
+	})
+	mux.HandleFunc("/item/4.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 4, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/5.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 5, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/6.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 6, "type": "comment"}`)
+	})
+	mux.HandleFunc("/item/7.json", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"id": 7, "type": "comment"}`)
+	})
+
+	ctx := context.Background()
+	got, err := client.Items.FetchAllDescendants(ctx, mockParent, nil)
+
+	if err != nil {
+		t.Fatalf("unexpected error getting item: %v", err)
+	}
+
+	if got == nil {
+		t.Fatalf("expected item to be %v, got nil", 1)
+	}
+
+	if len(got) != actualDescendants {
+		t.Errorf("expected %d items, got %v", actualDescendants, len(got))
+	}
+
+	for _, id := range []int{2, 3, 4, 5, 6, 7} {
+		if got[id] == nil {
+			t.Fatalf("expected item %v to be %v, got nil", id, id)
+		}
+		if *got[id].ID != id {
+			t.Errorf("expected item ID %d, got %d", id, *got[id].ID)
+		}
+	}
+}
