@@ -83,7 +83,7 @@ func TestFetchAllDescendants(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6]}`)
@@ -115,8 +115,8 @@ func TestFetchAllDescendants(t *testing.T) {
 		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(got) != 6 {
-		t.Errorf("expected 6 items, got %v", len(got))
+	if len(got) != numDescendants {
+		t.Errorf("expected %d items, got %v", numDescendants, len(got))
 	}
 
 	for _, id := range []int{2, 3, 4, 5, 6, 7} {
@@ -139,7 +139,7 @@ func TestSetCommentsPosition(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6]}`)
@@ -171,8 +171,8 @@ func TestSetCommentsPosition(t *testing.T) {
 		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(got) != 6 {
-		t.Errorf("expected 6 items, got %v", len(got))
+	if len(got) != numDescendants {
+		t.Errorf("expected %d items, got %v", numDescendants, len(got))
 	}
 
 	story := gohn.Story{
@@ -210,7 +210,7 @@ func TestIsTopLevelComment(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
@@ -242,8 +242,8 @@ func TestIsTopLevelComment(t *testing.T) {
 		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(got) != 6 {
-		t.Errorf("expected 6 items, got %v", len(got))
+	if len(got) != numDescendants {
+		t.Errorf("expected %d items, got %v", numDescendants, len(got))
 	}
 
 	story := gohn.Story{
@@ -277,7 +277,7 @@ func TestGetOrderedCommentsIDs(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
@@ -309,8 +309,8 @@ func TestGetOrderedCommentsIDs(t *testing.T) {
 		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(got) != 6 {
-		t.Errorf("expected 6 items, got %v", len(got))
+	if len(got) != numDescendants {
+		t.Errorf("expected %d items, got %v", numDescendants, len(got))
 	}
 
 	story := gohn.Story{
@@ -338,7 +338,7 @@ func TestGetStoryIdFromComment(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
@@ -370,8 +370,8 @@ func TestGetStoryIdFromComment(t *testing.T) {
 		t.Fatalf("expected item to be %v, got nil", 1)
 	}
 
-	if len(got) != 6 {
-		t.Errorf("expected 6 items, got %v", len(got))
+	if len(got) != numDescendants {
+		t.Errorf("expected %d items, got %v", numDescendants, len(got))
 	}
 
 	expectedStoryID := 1
@@ -424,7 +424,7 @@ func TestFetchAllDescendants_Processor_excludeKids(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
@@ -464,7 +464,7 @@ func TestFetchAllDescendants_Processor_excludeKids(t *testing.T) {
 		t.Fatalf("expected items not to be nil")
 	}
 
-	if len(got) != len(excludedItemsIDs) {
+	if len(got) != numDescendants-len(excludedItemsIDs) {
 		t.Errorf("expected %d items, got %v", len(excludedItemsIDs), len(got))
 	}
 
@@ -489,7 +489,7 @@ func TestFetchAllDescendants_Processor_includeKids(t *testing.T) {
 	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
 
 	mux.HandleFunc("/item/1.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": 6}`)
+		fmt.Fprint(w, `{"id": 1, "type": "story", "kids": [2, 3, 4], "descendants": `+fmt.Sprint(numDescendants)+`}`)
 	})
 	mux.HandleFunc("/item/2.json", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"id": 2, "type": "comment", "kids": [5, 6], "parent": 1}`)
