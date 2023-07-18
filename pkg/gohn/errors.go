@@ -5,18 +5,18 @@ import (
 	"net/http"
 )
 
-type ErrInvalidItem struct {
+type InvalidItemError struct {
 	Message string
 }
 
-func (e ErrInvalidItem) Error() string {
+func (e InvalidItemError) Error() string {
 	return fmt.Sprintf("invalid item: %v", e.Message)
 }
 
-type ErrResponse struct {
+type ResponseError struct {
 	Response *http.Response
 }
 
-func (r *ErrResponse) Error() string {
+func (r *ResponseError) Error() string {
 	return fmt.Sprintf("Error %d for %v", r.Response.StatusCode, r.Response.Request.URL)
 }

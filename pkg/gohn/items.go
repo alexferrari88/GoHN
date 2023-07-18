@@ -215,10 +215,10 @@ func (s *ItemsService) GetMaxID(ctx context.Context) (*int, error) {
 // GetStoryIdFromComment returns the ID of the story for a given comment.
 func (s *ItemsService) GetStoryIdFromComment(ctx context.Context, item *Item) (*int, error) {
 	if item == nil {
-		return nil, ErrInvalidItem{Message: "item is nil"}
+		return nil, InvalidItemError{Message: "item is nil"}
 	}
 	if *item.Type != "comment" {
-		return nil, ErrInvalidItem{Message: "item is not a comment"}
+		return nil, InvalidItemError{Message: "item is not a comment"}
 	}
 	var storyId *int
 	for {

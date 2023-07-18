@@ -62,7 +62,7 @@ func (s *Story) GetOrderedCommentsIDs() ([]int, error) {
 	var comments []int
 	for _, comment := range s.CommentsByIdMap {
 		if comment.ID == nil || comment.Position == nil {
-			return nil, &ErrInvalidItem{Message: "comment ID or position is nil"}
+			return nil, &InvalidItemError{Message: "comment ID or position is nil"}
 		}
 		comments = append(comments, *comment.ID)
 	}
@@ -77,16 +77,16 @@ func (s *Story) GetOrderedCommentsIDs() ([]int, error) {
 // IsTopLevelComment checks if an Item is a top level comment in a story.
 func (s *Story) IsTopLevelComment(item *Item) (bool, error) {
 	if s.Parent.Kids == nil {
-		return false, &ErrInvalidItem{Message: "story has no kids"}
+		return false, &InvalidItemError{Message: "story has no kids"}
 	}
 	if item.Type == nil {
-		return false, &ErrInvalidItem{Message: "item has no type"}
+		return false, &InvalidItemError{Message: "item has no type"}
 	}
 	if item.Parent == nil {
-		return false, &ErrInvalidItem{Message: "item has no parent"}
+		return false, &InvalidItemError{Message: "item has no parent"}
 	}
 	if *item.Type != "comment" {
-		return false, &ErrInvalidItem{Message: "item is not a comment"}
+		return false, &InvalidItemError{Message: "item is not a comment"}
 	}
 	for _, kid := range *s.Parent.Kids {
 		if kid == *item.ID {
