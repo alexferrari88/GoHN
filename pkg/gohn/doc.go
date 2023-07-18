@@ -98,5 +98,5 @@ Package GoHN is a wrapper for the Hacker News API: https://github.com/HackerNews
 package gohn
 
 const (
-	Version = "0.7.5"
+	Version = "0.8.0"
 )
