@@ -29,7 +29,7 @@ Refer to [example/main.go](example/main.go) for a full example on how to retriev
 
 ```go
     // Instantiate a new client to retrieve data from the Hacker News API
-    hn := gohn.NewClient(nil)
+    hn, _ := gohn.NewClient(nil)
 
     // Use background context
     ctx := context.Background()
