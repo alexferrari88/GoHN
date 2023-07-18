@@ -13,7 +13,10 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	c := gohn.NewClient(nil)
+	c, err := gohn.NewClient(nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
 
 	if c.BaseURL.String() != gohn.BASE_URL {
 		t.Errorf("expected base url %v, got %v", gohn.BASE_URL, c.BaseURL)
@@ -23,14 +26,20 @@ func TestNewClient(t *testing.T) {
 		t.Errorf("expected user agent %v, got %v", gohn.USER_AGENT, c.UserAgent)
 	}
 
-	c2 := gohn.NewClient(nil)
+	c2, err := gohn.NewClient(nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
 	if c.GetHTTPClient() == c2.GetHTTPClient() {
 		t.Errorf("expected different http.Clients, got the same")
 	}
 }
 
 func TestNewRequest(t *testing.T) {
-	c := gohn.NewClient(nil)
+	c, err := gohn.NewClient(nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
 
 	inURL, outURL := "test", gohn.BASE_URL+"test"
 	req, _ := c.NewRequest("GET", inURL)
@@ -53,8 +62,11 @@ func TestNewRequest(t *testing.T) {
 }
 
 func TestNewRequest_badURL(t *testing.T) {
-	c := gohn.NewClient(nil)
-	_, err := c.NewRequest("GET", ":")
+	c, err := gohn.NewClient(nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	_, err = c.NewRequest("GET", ":")
 	if err == nil {
 		t.Error("expected error to be returned")
 	}
@@ -70,7 +82,10 @@ func TestNewRequest_errorForNoTrailingSlash(t *testing.T) {
 		{rawurl: "https://example.com/api", wantError: true},
 		{rawurl: "https://example.com/api/", wantError: false},
 	}
-	c := gohn.NewClient(nil)
+	c, err := gohn.NewClient(nil)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
 	for _, test := range tests {
 		u, err := url.Parse(test.rawurl)
 		if err != nil {
@@ -157,13 +172,13 @@ func TestCheckResponse(t *testing.T) {
 		Request:    &http.Request{},
 		StatusCode: http.StatusBadRequest,
 	}
-	err := gohn.CheckResponse(res).(*gohn.ErrResponse)
+	err := gohn.CheckResponse(res).(*gohn.ResponseError)
 
 	if err == nil {
 		t.Errorf("Expected error response.")
 	}
 
-	want := &gohn.ErrResponse{
+	want := &gohn.ResponseError{
 		Response: res,
 	}
 	if err == want {

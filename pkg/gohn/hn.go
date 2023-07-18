@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 const (
@@ -38,19 +39,24 @@ func (c *Client) GetHTTPClient() *http.Client {
 
 // NewClient returns a new Client that will be used to make requests to the Hacker News API.
 // If a nil httpClient is provided, http.Client will be used.
-func NewClient(httpClient *http.Client) *Client {
+func NewClient(httpClient *http.Client) (*Client, error) {
 	if httpClient == nil {
-		httpClient = &http.Client{}
+		httpClient = &http.Client{
+			Timeout: time.Second * 10,
+		}
 	}
 
-	baseURL, _ := url.Parse(BASE_URL)
+	baseURL, err := url.Parse(BASE_URL)
+	if err != nil {
+		return nil, err
+	}
 	c := Client{httpClient: httpClient, BaseURL: baseURL, UserAgent: USER_AGENT}
 	c.common.client = &c
 	c.Items = (*ItemsService)(&c.common)
 	c.Stories = (*StoriesService)(&c.common)
 	c.Users = (*UsersService)(&c.common)
 	c.Updates = (*UpdatesService)(&c.common)
-	return &c
+	return &c, nil
 }
 
 // NewRequest creates an API request.
@@ -81,10 +87,6 @@ func (c *Client) NewRequest(method, path string) (*http.Request, error) {
 // stored in the value pointed to by v, or returned as
 // an error if an API error has occurred.
 func (c *Client) Do(ctx context.Context, req *http.Request, v any) (*http.Response, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	req = req.WithContext(ctx)
 
 	resp, err := c.httpClient.Do(req)
@@ -130,5 +132,5 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 
-	return &ErrResponse{Response: r}
+	return &ResponseError{Response: r}
 }

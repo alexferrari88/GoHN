@@ -20,7 +20,11 @@ func Init() (client *gohn.Client, mux *http.ServeMux, serverURL string, teardown
 
 	server := httptest.NewServer(apiHandler)
 
-	client = gohn.NewClient(nil)
+	client, err := gohn.NewClient(nil)
+	if err != nil {
+		panic(err)
+	}
+
 	url, _ := url.Parse(server.URL + baseTestURLPath + "/")
 	client.BaseURL = url
 

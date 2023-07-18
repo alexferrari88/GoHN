@@ -10,7 +10,10 @@ import (
 
 func main() {
 	// Instantiate a new client to retrieve data from the Hacker News API
-	hn := gohn.NewClient(nil)
+	hn, err := gohn.NewClient(nil)
+	if err != nil {
+		panic(err)
+	}
 
 	// Use background context
 	ctx := context.Background()
