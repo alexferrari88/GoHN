@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"context"
@@ -19,7 +19,7 @@ func main() {
 	ctx := context.Background()
 
 	// Get the top 500 stories' IDs
-	topStoriesIds, _ := hn.Stories.GetTopIDs(ctx)
+	topStoriesIds, _ := hn.Stories.GetIDs(ctx, gohn.TopStory)
 
 	var story *gohn.Item
 	// Retrieve the details of the first one
