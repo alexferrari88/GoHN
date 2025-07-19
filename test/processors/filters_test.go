@@ -348,10 +348,10 @@ func TestFilterOutDeleted_multipleItems(t *testing.T) {
 		fmt.Fprint(w, `{"id": 7, "type": "comment", "text": "test"}`)
 	})
 	mux.HandleFunc("/item/8.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 8, "type": "comment", "text": "test", deleted: true}`)
+		fmt.Fprint(w, `{"id": 8, "type": "comment", "text": "test", "deleted": true}`)
 	})
 	mux.HandleFunc("/item/9.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 9, "type": "comment", "text": "test", deleted: true}`)
+		fmt.Fprint(w, `{"id": 9, "type": "comment", "text": "test", "deleted": true}`)
 	})
 
 	ctx := context.Background()
@@ -415,7 +415,7 @@ func TestFilterOutDeleted_singleItem(t *testing.T) {
 		fmt.Fprint(w, `{"id": 8, "type": "comment", "text": "test"}`)
 	})
 	mux.HandleFunc("/item/9.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"id": 9, "type": "comment", "text": "test", deleted: true}`)
+		fmt.Fprint(w, `{"id": 9, "type": "comment", "text": "test", "deleted": true}`)
 	})
 
 	ctx := context.Background()

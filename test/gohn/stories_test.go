@@ -1,4 +1,4 @@
-﻿package gohntest
+package gohntest
 
 import (
 	"context"
@@ -6,167 +6,49 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/alexferrari88/gohn/pkg/gohn"
 	"github.com/alexferrari88/gohn/test/setup"
 )
 
-func TestGetTopStoriesIDs(t *testing.T) {
+func TestGetStoriesIDs(t *testing.T) {
 	client, mux, _, teardown := setup.Init()
 	defer teardown()
 
-	mux.HandleFunc("/topstories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
-
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetTopIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+	tests := []struct {
+		storyType gohn.StoryType
+		url       string
+	}{
+		{gohn.TopStory, "/topstories.json"},
+		{gohn.BestStory, "/beststories.json"},
+		{gohn.NewStory, "/newstories.json"},
+		{gohn.AskStory, "/askstories.json"},
+		{gohn.ShowStory, "/showstories.json"},
+		{gohn.JobStory, "/jobstories.json"},
 	}
 
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
+	for _, tt := range tests {
+		t.Run(string(tt.storyType), func(t *testing.T) {
+			mux.HandleFunc(tt.url, func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "[1,2,3]")
+			})
 
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
-	}
-}
+			mockStoriesIDs := []int{1, 2, 3}
+			ctx := context.Background()
 
-func TestGetBestStoriesIDs(t *testing.T) {
-	client, mux, _, teardown := setup.Init()
-	defer teardown()
+			got, err := client.Stories.GetIDs(ctx, tt.storyType)
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
 
-	mux.HandleFunc("/beststories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
+			if len(got) != len(mockStoriesIDs) {
+				t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
+			}
 
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetBestIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
-
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
-	}
-}
-
-func TestGetNewStoriesIDs(t *testing.T) {
-	client, mux, _, teardown := setup.Init()
-	defer teardown()
-
-	mux.HandleFunc("/newstories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
-
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetNewIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
-
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
-	}
-}
-
-func TestGetAskStoriesIDs(t *testing.T) {
-	client, mux, _, teardown := setup.Init()
-	defer teardown()
-
-	mux.HandleFunc("/askstories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
-
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetAskIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
-
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
-	}
-}
-
-func TestGetShowStoriesIDs(t *testing.T) {
-	client, mux, _, teardown := setup.Init()
-	defer teardown()
-
-	mux.HandleFunc("/showstories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
-
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetShowIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
-
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
-	}
-}
-
-func TestGetJobStoriesIDs(t *testing.T) {
-	client, mux, _, teardown := setup.Init()
-	defer teardown()
-
-	mux.HandleFunc("/jobstories.json", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "[1,2,3]")
-	})
-
-	mockStoriesIDs := []int{1, 2, 3}
-	ctx := context.Background()
-
-	got, err := client.Stories.GetJobIDs(ctx)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if len(got) != len(mockStoriesIDs) {
-		t.Errorf("expected %v stories, got %v", len(mockStoriesIDs), len(got))
-	}
-
-	for i, story := range got {
-		if *story != mockStoriesIDs[i] {
-			t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
-		}
+			for i, story := range got {
+				if *story != mockStoriesIDs[i] {
+					t.Errorf("expected story %v, got %v", mockStoriesIDs[i], story)
+				}
+			}
+		})
 	}
 }

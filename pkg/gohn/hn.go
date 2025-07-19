@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -21,6 +23,7 @@ type Client struct {
 	httpClient *http.Client
 	BaseURL    *url.URL
 	common     service
+	limiter    *rate.Limiter
 	Items      *ItemsService
 	Stories    *StoriesService
 	Users      *UsersService
@@ -50,7 +53,12 @@ func NewClient(httpClient *http.Client) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := Client{httpClient: httpClient, BaseURL: baseURL, UserAgent: USER_AGENT}
+	c := Client{
+		httpClient: httpClient,
+		BaseURL:    baseURL,
+		UserAgent:  USER_AGENT,
+		limiter:    rate.NewLimiter(rate.Every(1*time.Second), 1),
+	}
 	c.common.client = &c
 	c.Items = (*ItemsService)(&c.common)
 	c.Stories = (*StoriesService)(&c.common)
@@ -88,6 +96,11 @@ func (c *Client) NewRequest(method, path string) (*http.Request, error) {
 // an error if an API error has occurred.
 func (c *Client) Do(ctx context.Context, req *http.Request, v any) (*http.Response, error) {
 	req = req.WithContext(ctx)
+
+	err := c.limiter.Wait(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := c.httpClient.Do(req)
 

@@ -1,4 +1,4 @@
-﻿package gohn
+package gohn
 
 import (
 	"context"
@@ -73,14 +73,70 @@ func (s *ItemsService) GetIDsFromURL(ctx context.Context, url string) ([]*int, e
 	return ids, nil
 }
 
+// commentFetchConfig holds the configuration and channels for comment fetching.
+// This struct encapsulates all the state needed for concurrent comment retrieval,
+// providing a clean separation of concerns and making the code more testable.
+type commentFetchConfig struct {
+	commentsChan   chan *Item    // Channel for passing fetched comments to the result processor
+	kidsQueue      chan int      // Buffered channel for queuing comment IDs to be fetched
+	results        ItemsIndex    // Thread-safe map for storing fetched comments by ID
+	expectedCount  int           // Expected number of comments (used for buffer sizing optimization)
+}
+
+// initializeCommentFetching sets up channels and buffers for the comment fetching process.
+// This function optimizes channel buffer sizes based on the expected number of descendants:
+// - If item.Descendants is available, it pre-allocates buffers for better performance
+// - If not available, it falls back to using the number of direct children
+// This optimization reduces memory allocations and improves concurrent performance.
+func (s *ItemsService) initializeCommentFetching(item *Item) *commentFetchConfig {
+	var expectedCount int
+	var commentsChan chan *Item
+	var kidsQueue chan int
+	var results ItemsIndex
+
+	if item.Descendants != nil && *item.Descendants > 0 {
+		expectedCount = *item.Descendants
+		results = make(ItemsIndex, expectedCount)
+		commentsChan = make(chan *Item, expectedCount)
+		kidsQueue = make(chan int, expectedCount)
+	} else {
+		expectedCount = len(*item.Kids)
+		results = make(ItemsIndex)
+		commentsChan = make(chan *Item)
+		kidsQueue = make(chan int, expectedCount)
+	}
+
+	return &commentFetchConfig{
+		commentsChan:  commentsChan,
+		kidsQueue:     kidsQueue,
+		results:       results,
+		expectedCount: expectedCount,
+	}
+}
+
+
 // FetchAllDescendants returns a map of all the comments for a given Item.
 // The map key is the ID of the item. The map value is a pointer to the item itself.
 // The map can be used to retrieve the comments for a given item by
 // traversing the Kids slice of the item recursively (N-ary tree preorder traversal).
 // See an implementation in the example directory.
+//
+// CONCURRENT ARCHITECTURE:
+// This function implements a sophisticated concurrent comment fetching system:
+// 1. Uses a work queue pattern with channels for distributing fetch tasks
+// 2. Employs a WaitGroup to track in-progress work and signal completion
+// 3. Processes results dynamically, adding new work items as comments are fetched
+// 4. Provides graceful error handling and context cancellation support
+//
+// PROCESSOR INTEGRATION:
 // If the ItemProcessor returns an error, the item will not be added to the map.
-// Its kids will be added to the queue only if the ItemProcessors returns false, together with the error.
+// Its kids will be added to the queue only if the ItemProcessor returns false, together with the error.
 // For more information on the ItemProcessor, check the gohn/processors package.
+//
+// PERFORMANCE OPTIMIZATIONS:
+// - Pre-allocates channel buffers based on expected comment count
+// - Uses separate goroutines for different aspects of the work
+// - Minimizes lock contention through channel-based communication
 func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn ItemProcessor) (ItemsIndex, error) {
 	if item == nil {
 		return nil, errors.New("item is nil")
@@ -88,113 +144,135 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 	if item.Kids == nil {
 		return nil, errors.New("item has no kids")
 	}
+
+	// Initialize configuration for the fetch operation
+	config := s.initializeCommentFetching(item)
+	
+	// Use a WaitGroup to track work in progress
 	var wg sync.WaitGroup
-	// channel of items to be added to the map
-	var commentsChan chan *Item
-	// channel of IDs to be retrieved
-	// kids found in the commentsChan will be added to this channel
-	// buffered so that initializing the queue doesn't block
-	var kidsQueue chan int
-	// channel to signaling that the processing is done
+	
+	// Error channel for goroutine error reporting
+	errChan := make(chan error, 1)
+	
+	// Channel to signal completion
 	done := make(chan struct{})
-	// number of items to fetch and process
-	var commentsNumToFetch int
-	// map of items to return
-	var mapCommentById ItemsIndex
-
-	if item.Descendants != nil && *item.Descendants > 0 {
-		commentsNumToFetch = *item.Descendants
-		mapCommentById = make(ItemsIndex, commentsNumToFetch)
-		commentsChan = make(chan *Item, commentsNumToFetch)
-		kidsQueue = make(chan int, commentsNumToFetch)
-	} else {
-		commentsNumToFetch = len(*item.Kids)
-		mapCommentById = make(ItemsIndex)
-		commentsChan = make(chan *Item)
-		kidsQueue = make(chan int, commentsNumToFetch)
-	}
-
+	
+	// Add initial work items
 	wg.Add(len(*item.Kids))
+	
+	// Start initial comment fetchers
+	go s.populateKidsQueue(config.kidsQueue, *item.Kids)
+	
+	// Start the completion monitor
+	go s.monitorCompletion(&wg, done)
+	
+	// Process work items until completion
+	return s.processWorkQueue(ctx, config, &wg, errChan, done, fn)
+}
 
-	// the following variables are used to signal the start of the processing
-	start := make(chan struct{})
-	var startOnce sync.Once
+// populateKidsQueue populates the kids queue with initial IDs.
+// This function runs in a separate goroutine to avoid blocking the main processing loop.
+// It's used both for initial population and for adding newly discovered child comments.
+func (s *ItemsService) populateKidsQueue(kidsQueue chan int, kids []int) {
+	for _, kid := range kids {
+		kidsQueue <- kid
+	}
+}
 
-	// initialize kidsQueue so that the fetching in the for loop can start
-	go func() {
-		for _, kid := range *item.Kids {
-			kidsQueue <- kid
-		}
-	}()
+// monitorCompletion waits for all work to complete and signals done.
+// This function runs in a separate goroutine to monitor the WaitGroup and
+// signal completion when all concurrent fetch operations have finished.
+// This approach separates completion monitoring from the main processing loop.
+func (s *ItemsService) monitorCompletion(wg *sync.WaitGroup, done chan struct{}) {
+	wg.Wait()
+	close(done)
+}
 
-	// goroutine to close the done channel when all the items are fetched and processed
-	go func() {
-		// wait for the first kid to be in the queue
-		// in this way, we don't close the done channel before the processing has started
-		<-start
-		// the first kid has been added to the queue
-		// it is safe now to start waiting
-		wg.Wait()
-		close(done)
-	}()
-L:
+// processWorkQueue handles the main processing loop with channels.
+// This is the heart of the concurrent processing system, implementing a select-based
+// event loop that coordinates between:
+// - Context cancellation (for graceful shutdown)
+// - Error propagation from worker goroutines
+// - Work item distribution to fetch goroutines
+// - Result collection and processing
+// - Completion signaling when all work is done
+func (s *ItemsService) processWorkQueue(ctx context.Context, config *commentFetchConfig, wg *sync.WaitGroup, errChan chan error, done chan struct{}, fn ItemProcessor) (ItemsIndex, error) {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		// fetch the item and send it to commentsChan
-		case currentId := <-kidsQueue:
-			// once the first kid has been added to the queue, signal the start of the processing
-			// this is done to avoid closing the done channel before the processing has started
-			startOnce.Do(func() {
-				close(start)
-			})
-			go func(wg *sync.WaitGroup, currentId int) {
-				it, err := s.Get(ctx, currentId)
-				if err != nil {
-					// TODO: add better error handling
-					wg.Done()
-					return
-				}
-				if fn != nil {
-					excludeKids, err := fn(it, wg)
-					if err != nil && excludeKids {
-						// TODO: add better error handling
-						wg.Done()
-						return
-					} else if err != nil && !excludeKids {
-						if it.Kids != nil {
-							wg.Add(len(*it.Kids))
-							for _, kid := range *it.Kids {
-								kidsQueue <- kid
-							}
-						}
-						wg.Done()
-						return
-					}
-				}
-				commentsChan <- it
-			}(&wg, currentId)
-		// add the item to the map and, if it has any kid,
-		// add their IDs to the queue so that they can be fetched
-		case comment := <-commentsChan:
-			if comment.ID != nil {
-				mapCommentById[*comment.ID] = comment
-				if comment.Kids != nil && len(*comment.Kids) > 0 {
-					wg.Add(len(*comment.Kids))
-					go func(comment *Item) {
-						for _, kid := range *comment.Kids {
-							kidsQueue <- kid
-						}
-					}(comment)
-				}
-			}
-			wg.Done()
+		case err := <-errChan:
+			return nil, err
+		case itemID := <-config.kidsQueue:
+			go s.fetchAndProcessComment(ctx, itemID, config, wg, errChan, fn)
+		case comment := <-config.commentsChan:
+			s.handleCommentResult(comment, config, wg)
 		case <-done:
-			break L
+			return config.results, nil
 		}
 	}
-	return mapCommentById, nil
+}
+
+// fetchAndProcessComment fetches a single comment and processes it.
+// This function runs in a separate goroutine for each comment being fetched, providing
+// concurrent processing. It handles:
+// - HTTP request to fetch the comment data
+// - ItemProcessor integration with proper error handling
+// - Result forwarding to the main processing loop
+// - WaitGroup coordination for completion tracking
+// - Error propagation through the error channel
+func (s *ItemsService) fetchAndProcessComment(ctx context.Context, itemID int, config *commentFetchConfig, wg *sync.WaitGroup, errChan chan error, fn ItemProcessor) {
+	defer wg.Done()
+	
+	item, err := s.Get(ctx, itemID)
+	if err != nil {
+		select {
+		case errChan <- err:
+		default:
+		}
+		return
+	}
+
+	// Process with the provided processor if available
+	if fn != nil {
+		excludeKids, err := fn(item, wg)
+		if err != nil {
+			if excludeKids {
+				select {
+				case errChan <- err:
+				default:
+				}
+				return
+			}
+			// If processor returns error but doesn't want to exclude kids,
+			// we still add the kids to the queue but don't add this item to results
+			if item.Kids != nil && len(*item.Kids) > 0 {
+				wg.Add(len(*item.Kids))
+				go s.populateKidsQueue(config.kidsQueue, *item.Kids)
+			}
+			return
+		}
+	}
+
+	// Send the item to be processed
+	config.commentsChan <- item
+}
+
+// handleCommentResult processes a comment result and adds its kids to the queue.
+// This function is called from the main processing loop when a comment is successfully
+// fetched and processed. It:
+// - Stores the comment in the results map
+// - Discovers any child comments and adds them to the work queue
+// - Updates the WaitGroup to track the newly discovered work
+// This enables the dynamic discovery and fetching of the complete comment tree.
+func (s *ItemsService) handleCommentResult(comment *Item, config *commentFetchConfig, wg *sync.WaitGroup) {
+	if comment.ID != nil {
+		config.results[*comment.ID] = comment
+		if comment.Kids != nil && len(*comment.Kids) > 0 {
+			wg.Add(len(*comment.Kids))
+			go s.populateKidsQueue(config.kidsQueue, *comment.Kids)
+		}
+	}
 }
 
 // GetMaxID returns the ID of the most recent item.
@@ -229,7 +307,11 @@ func (s *ItemsService) GetStoryIdFromComment(ctx context.Context, item *Item) (*
 		if item.Parent == nil {
 			break
 		}
-		item, _ = s.Get(ctx, *item.Parent)
+		parentItem, err := s.Get(ctx, *item.Parent)
+		if err != nil {
+			return nil, err
+		}
+		item = parentItem
 	}
 	return storyId, nil
 }

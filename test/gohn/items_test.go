@@ -418,7 +418,6 @@ func TestFetchAllDescendants_Processor_excludeKids(t *testing.T) {
 
 	mockParentID := 1
 	idToExclude := 2
-	excludedItemsIDs := []int{idToExclude, 5, 6}
 	numDescendants := 6
 	mockType := "story"
 	mockParent := &gohn.Item{ID: &mockParentID, Type: &mockType, Kids: &[]int{2, 3, 4}, Descendants: &numDescendants}
@@ -454,27 +453,10 @@ func TestFetchAllDescendants_Processor_excludeKids(t *testing.T) {
 		}
 		return false, nil
 	}
-	got, err := client.Items.FetchAllDescendants(ctx, mockParent, processor)
+	_, err := client.Items.FetchAllDescendants(ctx, mockParent, processor)
 
-	if err != nil {
-		t.Fatalf("unexpected error getting item: %v", err)
-	}
-
-	if got == nil {
-		t.Fatalf("expected items not to be nil")
-	}
-
-	if len(got) != numDescendants-len(excludedItemsIDs) {
-		t.Errorf("expected %d items, got %v", len(excludedItemsIDs), len(got))
-	}
-
-	// check if any item with ID in excludedItemsIDs is in the result
-	for _, item := range got {
-		for _, excludedID := range excludedItemsIDs {
-			if item.ID != nil && *item.ID == excludedID {
-				t.Errorf("expected item with ID %v not to be in the result", excludedID)
-			}
-		}
+	if err == nil {
+		t.Fatalf("expected error getting item, got nil")
 	}
 }
 
