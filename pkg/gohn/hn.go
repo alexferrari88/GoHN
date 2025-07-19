@@ -16,7 +16,28 @@ import (
 const (
 	BASE_URL   = "https://hacker-news.firebaseio.com/v0/"
 	USER_AGENT = "GoHN/" + Version
+	
+	// Default rate limiting: 1 request per second
+	DefaultRateLimit = 1 * time.Second
+	DefaultBurstSize = 1
 )
+
+// ClientOptions contains configuration options for the Client.
+type ClientOptions struct {
+	// HTTPClient is the HTTP client to use for requests.
+	HTTPClient *http.Client
+	
+	// RateLimit controls the rate limiting between requests.
+	// Default is 1 request per second to respect HN API guidelines.
+	RateLimit time.Duration
+	
+	// BurstSize is the number of requests that can be made in a burst.
+	// Default is 1 to be conservative with the HN API.
+	BurstSize int
+	
+	// UserAgent to use for requests.
+	UserAgent string
+}
 
 // Client manages communication with the Hacker News API.
 type Client struct {
@@ -42,28 +63,66 @@ func (c *Client) GetHTTPClient() *http.Client {
 
 // NewClient returns a new Client that will be used to make requests to the Hacker News API.
 // If a nil httpClient is provided, http.Client will be used.
+// This function maintains backward compatibility by using default rate limiting.
 func NewClient(httpClient *http.Client) (*Client, error) {
-	if httpClient == nil {
-		httpClient = &http.Client{
-			Timeout: time.Second * 10,
+	return NewClientWithOptions(&ClientOptions{
+		HTTPClient: httpClient,
+		RateLimit:  DefaultRateLimit,
+		BurstSize:  DefaultBurstSize,
+		UserAgent:  USER_AGENT,
+	})
+}
+
+// NewClientWithOptions returns a new Client with custom configuration options.
+// This allows fine-tuning of rate limiting, HTTP client settings, and other options.
+func NewClientWithOptions(opts *ClientOptions) (*Client, error) {
+	if opts == nil {
+		opts = &ClientOptions{}
+	}
+
+	// Set defaults
+	if opts.HTTPClient == nil {
+		opts.HTTPClient = &http.Client{
+			Timeout: time.Second * 30, // Increased timeout for better performance
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 20,
+				IdleConnTimeout:     90 * time.Second,
+				DisableCompression:  false,
+			},
 		}
+	}
+	
+	if opts.RateLimit <= 0 {
+		opts.RateLimit = DefaultRateLimit
+	}
+	
+	if opts.BurstSize <= 0 {
+		opts.BurstSize = DefaultBurstSize
+	}
+	
+	if opts.UserAgent == "" {
+		opts.UserAgent = USER_AGENT
 	}
 
 	baseURL, err := url.Parse(BASE_URL)
 	if err != nil {
 		return nil, err
 	}
+
 	c := Client{
-		httpClient: httpClient,
+		httpClient: opts.HTTPClient,
 		BaseURL:    baseURL,
-		UserAgent:  USER_AGENT,
-		limiter:    rate.NewLimiter(rate.Every(1*time.Second), 1),
+		UserAgent:  opts.UserAgent,
+		limiter:    rate.NewLimiter(rate.Every(opts.RateLimit), opts.BurstSize),
 	}
+	
 	c.common.client = &c
 	c.Items = (*ItemsService)(&c.common)
 	c.Stories = (*StoriesService)(&c.common)
 	c.Users = (*UsersService)(&c.common)
 	c.Updates = (*UpdatesService)(&c.common)
+	
 	return &c, nil
 }
 

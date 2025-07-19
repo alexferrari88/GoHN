@@ -97,13 +97,16 @@ func (s *ItemsService) initializeCommentFetching(item *Item) *commentFetchConfig
 	if item.Descendants != nil && *item.Descendants > 0 {
 		expectedCount = *item.Descendants
 		results = make(ItemsIndex, expectedCount)
-		commentsChan = make(chan *Item, expectedCount)
-		kidsQueue = make(chan int, expectedCount)
+		// Pre-allocate larger buffers for better performance
+		bufferSize := min(expectedCount, 1000) // Cap buffer at 1000 to avoid excessive memory usage
+		commentsChan = make(chan *Item, bufferSize)
+		kidsQueue = make(chan int, bufferSize)
 	} else {
 		expectedCount = len(*item.Kids)
-		results = make(ItemsIndex)
-		commentsChan = make(chan *Item)
-		kidsQueue = make(chan int, expectedCount)
+		results = make(ItemsIndex, expectedCount*2) // Pre-allocate more space for nested comments
+		bufferSize := min(expectedCount*10, 500) // Estimate more children than direct kids
+		commentsChan = make(chan *Item, bufferSize)
+		kidsQueue = make(chan int, bufferSize)
 	}
 
 	return &commentFetchConfig{
@@ -112,6 +115,14 @@ func (s *ItemsService) initializeCommentFetching(item *Item) *commentFetchConfig
 		results:       results,
 		expectedCount: expectedCount,
 	}
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 
@@ -168,6 +179,66 @@ func (s *ItemsService) FetchAllDescendants(ctx context.Context, item *Item, fn I
 	
 	// Process work items until completion
 	return s.processWorkQueue(ctx, config, &wg, errChan, done, fn)
+}
+
+// FetchAllDescendantsOptimized is an optimized version of FetchAllDescendants
+// that uses configurable worker pools and batching for better performance.
+// This function is recommended for large comment trees (>50 comments).
+func (s *ItemsService) FetchAllDescendantsOptimized(ctx context.Context, item *Item, fn ItemProcessor, workerCount int) (ItemsIndex, error) {
+	if item == nil {
+		return nil, errors.New("item is nil")
+	}
+	if item.Kids == nil {
+		return nil, errors.New("item has no kids")
+	}
+
+	if workerCount <= 0 {
+		// Determine optimal worker count based on expected descendants
+		if item.Descendants != nil && *item.Descendants > 0 {
+			// For large comment trees, use more workers but cap it
+			workerCount = min(max(*item.Descendants/20, 5), 50)
+		} else {
+			// Default worker count for smaller trees
+			workerCount = min(len(*item.Kids)*2, 10)
+		}
+	}
+
+	// Initialize configuration for the fetch operation
+	config := s.initializeCommentFetching(item)
+	
+	// Use a WaitGroup to track work in progress
+	var wg sync.WaitGroup
+	
+	// Error channel for goroutine error reporting
+	errChan := make(chan error, 1)
+	
+	// Channel to signal completion
+	done := make(chan struct{})
+	
+	// Start worker pool
+	for i := 0; i < workerCount; i++ {
+		go s.worker(ctx, config, &wg, errChan, fn)
+	}
+	
+	// Add initial work items
+	wg.Add(len(*item.Kids))
+	
+	// Start initial comment fetchers
+	go s.populateKidsQueue(config.kidsQueue, *item.Kids)
+	
+	// Start the completion monitor
+	go s.monitorCompletion(&wg, done)
+	
+	// Process results until completion
+	return s.processWorkQueueOptimized(ctx, config, &wg, errChan, done)
+}
+
+// max returns the maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // populateKidsQueue populates the kids queue with initial IDs.
@@ -271,6 +342,41 @@ func (s *ItemsService) handleCommentResult(comment *Item, config *commentFetchCo
 		if comment.Kids != nil && len(*comment.Kids) > 0 {
 			wg.Add(len(*comment.Kids))
 			go s.populateKidsQueue(config.kidsQueue, *comment.Kids)
+		}
+	}
+}
+
+// worker is a worker goroutine that processes items from the queue.
+// This is used by the optimized version to maintain a fixed pool of workers
+// instead of creating a new goroutine for each item.
+func (s *ItemsService) worker(ctx context.Context, config *commentFetchConfig, wg *sync.WaitGroup, errChan chan error, fn ItemProcessor) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case itemID, ok := <-config.kidsQueue:
+			if !ok {
+				return // Channel closed
+			}
+			s.fetchAndProcessComment(ctx, itemID, config, wg, errChan, fn)
+		}
+	}
+}
+
+// processWorkQueueOptimized handles the optimized processing loop with worker pools.
+// This version separates the work distribution from result collection for better performance.
+func (s *ItemsService) processWorkQueueOptimized(ctx context.Context, config *commentFetchConfig, wg *sync.WaitGroup, errChan chan error, done chan struct{}) (ItemsIndex, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case err := <-errChan:
+			return nil, err
+		case comment := <-config.commentsChan:
+			s.handleCommentResult(comment, config, wg)
+		case <-done:
+			close(config.kidsQueue) // Signal workers to stop
+			return config.results, nil
 		}
 	}
 }
