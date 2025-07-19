@@ -29,13 +29,16 @@ Refer to [example/main.go](example/main.go) for a full example on how to retriev
 
 ```go
     // Instantiate a new client to retrieve data from the Hacker News API
-    hn, _ := gohn.NewClient(nil)
+    hn, err := gohn.NewClient(nil)
+    if err != nil {
+        panic(err)
+    }
 
     // Use background context
     ctx := context.Background()
 
     // Get the top 500 stories' IDs
-    topStoriesIds, _ := hn.Stories.GetTopIDs(ctx)
+    topStoriesIds, _ := hn.Stories.GetIDs(ctx, gohn.TopStory)
 
     var story *gohn.Item
     // Retrieve the details of the first one
@@ -70,7 +73,7 @@ Refer to [example/main.go](example/main.go) for a full example on how to retriev
     // Retrieve all the comments for that story
     // UnescapeHTML is applied to each retrieved item to unescape HTML characters
 
-    commentsMap, err := hn.Items.FetchAllKids(ctx, story, processors.UnescapeHTML())
+    commentsMap, err := hn.Items.FetchAllDescendants(ctx, story, processors.UnescapeHTML())
 
     if err != nil {
         panic(err)
